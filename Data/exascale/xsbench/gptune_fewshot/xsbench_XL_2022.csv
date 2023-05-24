@@ -1,0 +1,31 @@
+p0,p1,p2,p3,p4,p5,p6,p7,isize,objective,elapsed_sec
+8,128, ,#pragma omp parallel for,8,64,sockets,balanced,10000000,4.849830000000001,70.77229404449463
+64,64,#pragma clang loop unrolling full, ,32,4,cores,explicit,10000000,3.3113099999999998,123.3067274093628
+48,10,#pragma clang loop unrolling full,#pragma omp parallel for,2,96,cores,explicit,10000000,3.38941,175.4267065525055
+4,80,#pragma clang loop unrolling full, ,128,2,threads,scatter,10000000,8.804179999999997,277.466335773468
+96,100, , ,4,32,threads,compact,10000000,3.304705,329.922828912735
+256,160, , ,32,8,threads,compact,10000000,3.330985,383.0586819648743
+16,100, ,#pragma omp parallel for,64,16,sockets,scatter,10000000,3.36195,434.96342182159424
+192,40,#pragma clang loop unrolling full, ,8,32,sockets,none,10000000,3.36207,487.97135972976685
+128,64,#pragma clang loop unrolling full, ,96,128,sockets,disabled,10000000,3.32749,540.5473206043243
+16,20, ,#pragma omp parallel for,4,256,sockets,explicit,10000000,3.3558550000000005,592.66828083992
+32,160, , ,256,2,cores,balanced,10000000,3.2707050000000004,645.0070233345033
+64,160,#pragma clang loop unrolling full, ,32,256,threads,none,10000000,3.29687,697.5585095882416
+192,20,#pragma clang loop unrolling full,#pragma omp parallel for,96,8,cores,disabled,10000000,3.3526550000000004,751.4310963153839
+8,200, ,#pragma omp parallel for,256,16,threads,compact,10000000,7.54321,841.5632994174957
+2,40, ,#pragma omp parallel for,16,128,cores,balanced,10000000,17.53409,1023.3709328174592
+64,160, ,#pragma omp parallel for,16,16,threads,disabled,10000000,3.403525,1217.666616439819
+128,200,#pragma clang loop unrolling full, ,2,256,threads,compact,10000000,3.32252,1405.1755740642548
+32,200, , ,8,16,cores,scatter,10000000,3.271205,1610.2546617984772
+128,128,#pragma clang loop unrolling full, ,128,256,cores,compact,10000000,3.32018,1815.4987347126007
+4,10, , ,64,2,threads,compact,10000000,14.351299999999998,2123.466460943222
+64,10, ,#pragma omp parallel for,256,2,sockets,scatter,10000000,3.311915,2334.150619268417
+4,100,#pragma clang loop unrolling full,#pragma omp parallel for,8,256,cores,compact,10000000,14.334545,2647.342863321305
+256,160, , ,8,256,sockets,balanced,10000000,3.33185,2821.411064147949
+128,128,#pragma clang loop unrolling full,#pragma omp parallel for,32,8,sockets,compact,10000000,3.3312,3042.454621553421
+16,128, ,#pragma omp parallel for,128,96,cores,scatter,10000000,3.3591550000000003,3266.1026470661163
+192,20, ,#pragma omp parallel for,64,2,sockets,none,10000000,3.3450300000000004,3496.0506494045258
+64,128, , ,64,256,threads,disabled,10000000,3.30871,3726.9706671237946
+64,40,#pragma clang loop unrolling full,#pragma omp parallel for,256,16,threads,none,10000000,3.32751,3963.0713114738464
+192,10, ,#pragma omp parallel for,16,32,cores,disabled,10000000,3.34819,4207.103187799454
+64,128, ,#pragma omp parallel for,8,16,sockets,none,10000000,3.3167799999999996,4449.366410732269

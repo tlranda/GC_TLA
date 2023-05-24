@@ -1,0 +1,31 @@
+p1,p2,p3,p4,p5,t0,t1,objective,elapsed_sec
+#pragma clang loop(j2) pack array(data) allocate(malloc), ,80,32,16,720,830,0.4840895,9.741821765899658
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",4,4,128,720,830,0.7301880000000001,61.836870193481445
+#pragma clang loop(j2) pack array(data) allocate(malloc), ,100,128,4,720,830,0.288956,109.19317817687988
+#pragma clang loop(j2) pack array(data) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",128,2048,8,720,830,0.2301885,144.7736418247223
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",128,2048,8,720,830,0.253471,179.33386492729187
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",96,2048,4,720,830,0.2153835,209.37741994857788
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",50,2048,4,720,830,0.2122145,274.51794147491455
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",8,2048,4,720,830,0.20677,319.60991072654724
+#pragma clang loop(j2) pack array(data) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",32,2048,4,720,830,0.1982985,351.0611991882324
+#pragma clang loop(j2) pack array(data) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",4,2048,8,720,830,0.2894775,385.10618448257446
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",20,2048,4,720,830,0.2025835,413.5192337036133
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",4,80,8,720,830,0.26242,548.3463728427887
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",100,2048,80,720,830,0.6638535000000001,599.3181927204132
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",4,4,4,720,830,0.2309735,659.757129907608
+ , ,8,4,32,720,830,0.479533,713.5340116024017
+ , ,8,4,8,720,830,0.2714965,800.461364030838
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",4,8,8,720,830,0.2709145,846.5056505203247
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",4,4,8,720,830,0.265223,988.422747850418
+ , ,8,4,4,720,830,0.2436995,1097.7456727027893
+ , ,100,4,4,720,830,0.237943,1241.483015537262
+#pragma clang loop(j2) pack array(data) allocate(malloc), ,8,4,4,720,830,0.3874345,1306.5303938388824
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",64,4,4,720,830,0.218405,1355.2099432945251
+ , ,96,2048,4,720,830,0.165899,1474.0256233215332
+#pragma clang loop(j2) pack array(data) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",100,4,4,720,830,0.2607335,1626.4935173988342
+#pragma clang loop(j2) pack array(data) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",16,4,4,720,830,0.257781,1782.3501279354095
+ , ,100,2048,8,720,830,0.2191274999999999,1936.3213503360748
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",20,2048,256,720,830,0.7760195000000001,2094.0538551807404
+ , ,4,2048,128,720,830,0.7417325,2254.826179742813
+ , ,128,20,4,720,830,0.216365,2390.312653541565
+#pragma clang loop(j2) pack array(data) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",8,2048,4,720,830,0.212076,2539.097402572632

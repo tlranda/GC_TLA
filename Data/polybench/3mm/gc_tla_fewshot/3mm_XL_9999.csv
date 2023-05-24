@@ -1,0 +1,31 @@
+p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,objective,predicted,elapsed_sec
+ , , ,100,100,4, , , , ,2.0905555,0.368488751664503,27.210930109024048
+ , , ,16,2048,4, , , , ,2.5125580000000003,0.40762868826592424,57.05092906951904
+ , , ,100,16,4,#pragma clang loop(j2) pack array(C) allocate(malloc), , , ,2.5882215000000004,0.40946493617157753,87.5030164718628
+ , , ,8,32,4,#pragma clang loop(j2) pack array(C) allocate(malloc), , , ,2.9728445,0.4449499588385823,121.47899603843689
+ , , ,8,32,4, , ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,2.9285565,0.46258149915534597,155.24702954292297
+ , , ,16,100,4, , ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,2.5756995,0.46511223043087924,184.59496235847473
+ , , ,4,100,4, , ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,3.723186,0.4775857547501188,227.58298802375793
+ , , ,4,80,4, , ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,3.959576,0.47974068331837244,272.63501381874084
+ , , ,96,32,4,#pragma clang loop(j2) pack array(C) allocate(malloc), , ,#pragma clang loop(i1) pack array(F) allocate(malloc),4.1876595000000005,0.48394837345486463,317.7554659843445
+ , , ,96,80,4, , ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,2.190066,0.4869376962493809,344.6430776119232
+ , , ,4,32,4,#pragma clang loop(j2) pack array(C) allocate(malloc), , , ,3.8257624999999997,0.49290177771944105,389.0950050354004
+ , , ,80,100,4, , , , ,2.068833,0.49361532564060107,414.69085001945496
+ , , ,4,100,4, , , , ,3.7170805,0.4936918481671354,457.6874928474426
+ , , ,16,32,4, , , , ,2.5445785,0.4941645141556066,487.75480008125305
+#pragma clang loop(j2) pack array(A) allocate(malloc), , ,50,32,4, , , , ,2.4039455,0.4994472252024478,516.5831367969513
+ , , ,16,80,4,#pragma clang loop(j2) pack array(C) allocate(malloc), ,#pragma clang loop(j2) pack array(E) allocate(malloc),#pragma clang loop(i1) pack array(F) allocate(malloc),4.59558,0.5032043480842947,565.3033177852631
+ , , ,16,16,4,#pragma clang loop(j2) pack array(C) allocate(malloc), , ,#pragma clang loop(i1) pack array(F) allocate(malloc),4.585062499999999,0.5058067806323769,613.0800049304962
+#pragma clang loop(j2) pack array(A) allocate(malloc), , ,80,128,4,#pragma clang loop(j2) pack array(C) allocate(malloc), , , ,2.1826774999999996,0.507789445896088,641.459545135498
+ , , ,16,100,4, , , , ,2.4991635,0.5093651183117781,671.9869029521942
+#pragma clang loop(j2) pack array(A) allocate(malloc), , ,16,128,4, , ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,2.4151285,0.511017609785804,702.0956163406372
+ , , ,4,16,4,#pragma clang loop(j2) pack array(C) allocate(malloc), , , ,6.012677500000001,0.5131717777363639,765.7519202232361
+ , , ,16,128,4,#pragma clang loop(j2) pack array(C) allocate(malloc), , , ,2.4147455,0.5132128782772003,794.7269809246063
+ , , ,4,16,4,#pragma clang loop(j2) pack array(C) allocate(malloc), ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,5.919418,0.5149887330696006,858.0958044528961
+#pragma clang loop(j2) pack array(A) allocate(malloc), , ,16,80,4, , ,#pragma clang loop(j2) pack array(E) allocate(malloc),#pragma clang loop(i1) pack array(F) allocate(malloc),4.5626915,0.5152302844390516,906.683755159378
+ , , ,8,128,4, , , ,#pragma clang loop(i1) pack array(F) allocate(malloc),4.976608000000001,0.5155354092073232,958.6952521800995
+ , , ,80,100,4,#pragma clang loop(j2) pack array(C) allocate(malloc), ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,2.2969765,0.5160542875118468,986.5356118679047
+ , , ,4,2048,4, , , , ,3.4371225,0.5161464577974608,1027.683539390564
+ , , ,64,16,4,#pragma clang loop(j2) pack array(C) allocate(malloc), , ,#pragma clang loop(i1) pack array(F) allocate(malloc),4.354831,0.5170808750556368,1073.347552061081
+#pragma clang loop(j2) pack array(A) allocate(malloc), , ,4,80,4, , ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,3.9353249999999997,0.5176497692937506,1118.8590018749237
+ , , ,80,128,4,#pragma clang loop(j2) pack array(C) allocate(malloc), ,#pragma clang loop(j2) pack array(E) allocate(malloc), ,2.275069,0.5178453223193068,1146.9630947113037

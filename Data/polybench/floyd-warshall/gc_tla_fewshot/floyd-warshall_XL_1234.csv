@@ -1,0 +1,31 @@
+p1,p2,p3,p4,p5,objective,predicted,elapsed_sec
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",8,20,16,135.8275945,1483.1729008258292,1232.258661031723
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",100,64,16,135.465901,2560.844590440268,2461.2194154262543
+ , ,16,16,32,135.868026,2749.291358490088,3694.6891691684723
+#pragma clang loop(j2) pack array(path) allocate(malloc), ,20,32,8,136.214742,3486.4376629564413,4927.806772708893
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",32,80,32,136.2116905,4884.582979346327,6162.22701048851
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",20,80,64,135.9841305,5402.676325660644,7394.250403165817
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",20,20,16,135.8202505,9259.975353264539,8626.909016609192
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",16,32,16,135.4641305,11436.605806184576,9861.71059179306
+#pragma clang loop(j2) pack array(path) allocate(malloc), ,16,50,64,136.064943,12815.283622251778,11100.351041078568
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",32,20,32,136.399471,15987.185341413753,12338.566515684128
+#pragma clang loop(j2) pack array(path) allocate(malloc), ,80,20,32,136.7548505,16208.359088899397,13579.19041132927
+#pragma clang loop(j2) pack array(path) allocate(malloc), ,20,128,16,136.53163849999999,24218.60213289685,14817.13465976715
+ , ,128,80,16,136.505609,26447.341343467113,16056.434519290924
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",96,32,16,136.5901015,29133.1747185348,17294.155070066452
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",80,32,32,136.3522745,29172.398728960736,18532.785059452057
+ , ,32,32,80,136.270559,34326.07101964386,19771.35733485222
+#pragma clang loop(j2) pack array(path) allocate(malloc), ,32,80,8,135.919882,35986.47261295835,21008.018496990204
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",20,128,32,136.37586900000002,36494.80815849163,22245.20648741722
+#pragma clang loop(j2) pack array(path) allocate(malloc), ,32,80,64,137.135454,44024.93881749827,23484.03863286972
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",32,50,32,136.8790295,46508.238665032506,24729.506723165512
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",64,32,4,136.316477,46735.56360509315,25966.794402837753
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",32,80,64,136.160974,48536.89209068225,27204.390636205673
+ , ,128,20,64,135.9673135,54167.80301206599,28441.3145904541
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",8,32,64,136.265554,72449.75895543607,29678.52516078949
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",16,20,8,135.7024515,88392.85111815893,30914.070516109467
+ , ,8,80,64,135.642715,89772.28840454882,32145.702702522278
+#pragma clang loop(j2) pack array(path) allocate(malloc),"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",8,64,16,135.749339,103633.73419831897,33379.14499902725
+ ,"#pragma clang loop(i1,j1,k1,i2,j2) interchange permutation(j1,k1,i1,j2,i2)",96,50,64,135.775977,117375.59243939049,34612.24660754204
+#pragma clang loop(j2) pack array(path) allocate(malloc), ,96,32,32,135.9540525,146061.64030467186,35845.886711120605
+ , ,4,32,32,135.3475545,156637.01014794648,37074.0857322216

@@ -1,0 +1,1 @@
+clang -std=c99 -fno-unroll-loops -fopenmp -O3 -mllvm -polly -mllvm -polly-process-unprofitable -mllvm -polly-use-llvm-names -ffast-math -march=native mm.c material.c utils.c -o RSB -lm -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
