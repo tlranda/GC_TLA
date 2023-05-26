@@ -128,7 +128,9 @@ substitute = {'BOOTSTRAP': "Bootstrap",
               'gptune': "GPTune",
               'GPTune': "GPTune",
               'REFIT': "Gaussian Copula with Refit",
-              'results': "BO"}
+              'results': "BO",
+              'bo': 'BO',
+              'gc': 'Gaussian Copula'}
 HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME = True
 
 benchmark_names = {'Lu': 'LU',
@@ -174,15 +176,18 @@ def make_seed_invariant_name(name, args):
         else:
             temp_split = os.path.dirname(os.path.abspath(name)).split('/')
             decide = lambda string : True if '_exp' in string else False
-            has_exp = temp_split[[decide(_) for _ in temp_split].index(True)]
-            # Subtract 1 due to _exp being a split
-            suggest_benchmark_length = len(has_exp.lstrip('_').split('_'))-1
-            #global HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME
-            #if HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME:
-            #    print("WARNING: Unable to determine benchmark name length--this may cause errors.")
-            #    print("You can address this by ensuring data is encapsulated in a directory visible on relative paths with the name \"{benchmark_name}_exp\"")
-            #    HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME = False
-            #suggest_benchmark_length = 1
+            try:
+                has_exp = temp_split[[decide(_) for _ in temp_split].index(True)]
+                # Subtract 1 due to _exp being a split
+                suggest_benchmark_length = len(has_exp.lstrip('_').split('_'))-1
+                #global HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME
+                #if HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME:
+                #    print("WARNING: Unable to determine benchmark name length--this may cause errors.")
+                #    print("You can address this by ensuring data is encapsulated in a directory visible on relative paths with the name \"{benchmark_name}_exp\"")
+                #    HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME = False
+                #suggest_benchmark_length = 1
+            except:
+                suggest_benchmark_length = 1
         name_split = name.split('_')
         # Decompose for ease of semantics
         if name.startswith('results'):
@@ -207,6 +212,21 @@ def make_seed_invariant_name(name, args):
         # Reorder in reconstruction
         name = name_split['short_identifier']
         suggest_legend_title = f"{name_split['size']} {try_familiar(name_split['benchmark'].replace('_', ' '))}"
+    return name, directory, suggest_legend_title
+
+def make_seed_invariant_name(name, args):
+    fullsplit = name.split('/')
+    name = fullsplit[1]
+    for key in substitute.keys():
+        if key.lower() in name.lower():
+            name = substitute[key]
+            break
+    directory = os.path.dirname(name) if not args.merge_dirs else 'MERGE'
+    namesplit = fullsplit[-1].split('_')
+    bench = namesplit[0]
+    size = namesplit[1]
+    seed = namesplit[2]
+    suggest_legend_title = f"{size} {bench}"
     return name, directory, suggest_legend_title
 
 def make_baseline_name(name, args, df, col):
@@ -356,6 +376,15 @@ def combine_seeds(data, args):
                     step_data.append(last_step[idx2])
             # Make data entries for new_columns, ignoring NaN/Inf values
             finite = [_ for _ in step_data if np.isfinite(_)]
+            if len(finite) == 0:
+                new_columns['current'][idx] = np.nan
+                new_columns['obj'][idx] = np.nan
+                new_columns['exe'][idx] = step
+                new_columns['min'][idx] = np.nan
+                new_columns['max'][idx] = np.nan
+                new_columns['std_low'][idx] = np.nan
+                new_columns['std_high'][idx] = np.nan
+                continue
             mean = np.mean(finite)
             trimmed = entry['fname'] in args.trim
             if 'old_objective' in entry['data'][0].columns:
@@ -379,7 +408,7 @@ def combine_seeds(data, args):
                     new_columns['std_high'][idx] = stddev
         # Make new dataframe
         new_data['data'] = pd.DataFrame(new_columns).sort_values('exe')
-        new_data['data'] = new_data['data'][new_data['data']['obj'] > 0]
+        #new_data['data'] = new_data['data'][new_data['data']['obj'] > 0]
         combined_data.append(new_data)
     # Perform PCA fitting
     fittable = []
@@ -833,7 +862,11 @@ def main(args):
         text_analysis(data, args)
     if not args.no_plots:
         # Determine if a vertical break is needed and where
-        y_data = np.vstack([d['data'].obj.to_numpy() for d in data])
+        try:
+            y_data = np.vstack([d['data'].obj.to_numpy() for d in data])
+        except:
+            import pdb
+            pdb.set_trace()
         # Never need vertical breaks if max speedup is less than 3
         if np.max(y_data) > 40:
             y_flat = y_data.ravel()
@@ -889,7 +922,8 @@ def main(args):
             else:
                 if top_val is None:
                     if args.as_speedup_vs is not None:
-                        yname = "Speedup (over -O3 -polly)"
+                        yname = "Speedup over Baseline"
+                        #yname = "Speedup (over -O3 -polly)"
                     else:
                         yname = "Objective"
                 else:

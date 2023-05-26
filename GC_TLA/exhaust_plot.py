@@ -122,7 +122,8 @@ def plotter_multi_mean_median(fig, ax, args):
         bonus_handles, bonus_labels = bonus_ax.get_legend_handles_labels()
         handles.extend(bonus_handles)
         labels.extend(bonus_labels)
-    ax.set_xlabel("Performance Rank of Configuration (Lower is Better)")
+    ax.set_xlabel("Configuration")
+    #ax.set_xlabel("Performance Rank of Configuration (Lower is Better)")
     ax.set_xscale('log')
     ax.set_yscale('log')
     #ax.set_ylabel(f"{names[0]} Objective Time (seconds)")
@@ -424,7 +425,7 @@ def add_default_line(ax, args):
 
 ncalls = 0
 def common(func, args):
-    fig, ax = func(*plt.subplots(figsize=tuple(args.fig_dims)), args)
+    fig, ax = func(*plt.subplots(figsize=tuple(args.fig_dims), dpi=args.dpi), args)
     fig.set_tight_layout(True)
     if args.default:
         add_default_line(ax, args)
@@ -479,6 +480,7 @@ def build():
     prs.add_argument('--problem', type=str, default=None, help='Problem for importing information')
     prs.add_argument('--attribute', type=str, default=None, help='Attribute to fetch a problem instance for information')
     prs.add_argument('--collapse-heat', action='store_true', help="Make heat as a CDF rather than a 2D map")
+    prs.add_argument('--dpi', type=float, default=matplotlib.rcParams['figure.dpi'], help="Figure DPI (default: %(default)s)")
     return prs
 
 def set_size(width, fraction=1, subplots=(1,1)):

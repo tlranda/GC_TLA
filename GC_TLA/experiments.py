@@ -278,7 +278,8 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
                         print(f"!! WARNING !! No experiment budget for {experiment}")
                     if budget is None:
                         budget = sect['max_budget']
-                    invoke += f"--budget {budget} "
+                    if not sect['exclude_budget']:
+                        invoke += f"--budget {budget} "
                 else:
                     invoke += "Data/DEFAULT.csv --log-y "
                 invoke += f"--x-axis {axis} --log-x --unname {experiment_dir}_ "+\
@@ -289,7 +290,13 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
                     invoke += " --minmax"
                 if sect['stddev']:
                     invoke += " --stddev"
-                info = verify_output(f"{experiment_short}_{target.upper()}_{axis}_plot.pdf", runtype, invoke, expect, args)
+                outname = f"{experiment_short}_{target.lower()}_{axis}_plot"
+                if 'format' in sect.keys():
+                    invoke += f" --format {sect['format']}"
+                    outname += f".{sect['format']}"
+                else:
+                    outname += ".pdf"
+                info = verify_output(outname, runtype, invoke, expect, args)
                 calls += info[0]
                 bluffs += info[1]
                 verifications += 1
