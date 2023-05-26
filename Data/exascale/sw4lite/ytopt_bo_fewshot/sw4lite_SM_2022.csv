@@ -1,0 +1,31 @@
+p0,p1,p2,p3,p4,p5,p6,p7,objective,elapsed_sec
+192,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for nowait,MPI_Barrier(MPI_COMM_WORLD);,5.43211,103.93458414077759
+48,threads,spread,dynamic, , ,#pragma omp for nowait,MPI_Barrier(MPI_COMM_WORLD);,5.40051,184.18045902252197
+8,cores,close,dynamic,#pragma omp parallel for,#pragma unroll (6),#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.39731,265.9337456226349
+32,sockets,close,dynamic,#pragma omp parallel for,#pragma unroll (6),#pragma omp for, ,5.3962,346.09829664230347
+4,cores,master,dynamic,#pragma omp parallel for, ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.40312,427.93373799324036
+32,threads,close,dynamic,#pragma omp parallel for, ,#pragma omp for, ,5.42339,509.9338347911835
+8,cores,master,dynamic, ,#pragma unroll,#pragma omp for, ,5.38366,591.9329085350037
+32,cores,spread,static,#pragma omp parallel for,#pragma unroll,#pragma omp for, ,5.39834,673.9334573745728
+256,cores,close,static,#pragma omp parallel for,#pragma unroll (6),#pragma omp for, ,5.39032,755.9336287975311
+4,cores,close,static,#pragma omp parallel for,#pragma unroll,#pragma omp for, ,5.40039,837.9333167076111
+32,cores,close,dynamic,#pragma omp parallel for,#pragma unroll,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.3902,919.9337482452393
+2,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for, ,5.3563,1001.9337706565857
+48,cores,master,dynamic, , ,#pragma omp for nowait, ,5.40237,1083.9337937831879
+8,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for, ,5.38715,1165.9329421520233
+64,cores,close,dynamic, , ,#pragma omp for, ,5.39845,1247.9336881637573
+256,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for, ,5.37326,1329.9333350658417
+4,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for, ,5.39809,1411.9327750205994
+96,cores,close,static,#pragma omp parallel for, ,#pragma omp for, ,5.38932,1493.9337644577026
+64,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for, ,5.39265,1575.9334812164307
+128,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for nowait, ,5.39488,1657.9337046146393
+192,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.35902,1739.9336094856262
+64,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.42189,1821.9338493347168
+256,cores,close,dynamic,#pragma omp parallel for, ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.38033,1903.9330768585205
+192,cores,close,dynamic, , ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.38815,1985.9337396621704
+192,cores,close,static,#pragma omp parallel for, ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.37057,2067.933140039444
+192,cores,close,static, , ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.36954,2149.932894229889
+192,cores,master,dynamic,#pragma omp parallel for, ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.35974,2231.9337084293365
+192,cores,master,dynamic, , ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.37941,2313.9336562156677
+192,cores,spread,static,#pragma omp parallel for, ,#pragma omp for nowait,MPI_Barrier(MPI_COMM_WORLD);,5.39377,2395.9335536956787
+192,sockets,spread,dynamic,#pragma omp parallel for, ,#pragma omp for,MPI_Barrier(MPI_COMM_WORLD);,5.3987,2477.9332802295685

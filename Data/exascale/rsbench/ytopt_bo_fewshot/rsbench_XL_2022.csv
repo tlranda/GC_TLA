@@ -1,0 +1,31 @@
+p0,p1,p2,p3,p4,p5,p6,p7,p8,objective,elapsed_sec
+8,400,#pragma clang loop unrolling full, ,96,16,80,compact,cores,34.437515,348.03689527511597
+256,1000,#pragma clang loop unrolling full,#pragma omp parallel for,64,96,200,none,threads,10.205015,458.03635334968567
+8,100, , ,256,4,200,scatter,sockets,25.325975,702.0368030071259
+32,400,#pragma clang loop unrolling full, ,128,2,20,compact,sockets,9.83019,806.5663425922394
+4,1000,#pragma clang loop unrolling full, ,96,128,160,disabled,cores,51.90585,1293.174414396286
+256,640, , ,16,16,200,balanced,cores,10.08263,1401.4768884181976
+32,200, ,#pragma omp parallel for,2,256,20,scatter,threads,9.908484999999999,1508.039030790329
+8,640,#pragma clang loop unrolling full, ,2,16,200,balanced,threads,25.288615,1754.3525114059448
+128,200, , ,256,96,200,explicit,threads,10.00535,1862.9404516220093
+32,640, , ,4,96,200,scatter,threads,9.970095,1969.631844997406
+32,1600, , ,96,96,100,scatter,threads,9.863225,2076.239020586014
+32,100,#pragma clang loop unrolling full, ,96,96,40,explicit,threads,9.868205,2182.681191921234
+32,640, ,#pragma omp parallel for,2,96,128,scatter,threads,9.91167,2291.138568162918
+32,1280, ,#pragma omp parallel for,128,96,128,none,threads,9.882355,2399.454196691513
+32,640, ,#pragma omp parallel for,64,96,20,balanced,threads,9.951775000000001,2507.856795310974
+32,100, ,#pragma omp parallel for,128,96,40,compact,threads,9.865895,2616.234078168869
+32,1600, , ,16,96,160,disabled,threads,9.832195,2724.6532361507416
+32,800, , ,128,96,100,explicit,threads,9.84533,2831.2344467639923
+32,400, , ,128,96,20,balanced,threads,9.91215,2939.6484956741333
+32,400, ,#pragma omp parallel for,32,96,64,disabled,threads,9.955,3048.07115650177
+32,800, , ,128,96,40,scatter,threads,9.8697,3156.5129976272583
+32,1600, ,#pragma omp parallel for,128,96,100,disabled,threads,9.96802,3264.8961482048035
+32,1000, , ,16,96,20,compact,threads,9.948695,3373.3242366313934
+32,400, , ,128,96,40,none,threads,9.850295,3480.3495483398438
+32,1000, , ,32,96,128,balanced,threads,9.92904,3587.3325316905975
+32,640, , ,96,96,10,disabled,cores,9.827055000000001,3695.760840654373
+32,1000, ,#pragma omp parallel for,8,96,160,compact,threads,9.997525,3804.1748757362366
+32,1600, , ,128,96,160,disabled,threads,9.983015,3911.133989572525
+32,100, ,#pragma omp parallel for,8,96,160,explicit,threads,9.960049999999999,4019.5966098308563
+32,1000, , ,8,96,10,none,threads,9.979005,4126.650710821152
