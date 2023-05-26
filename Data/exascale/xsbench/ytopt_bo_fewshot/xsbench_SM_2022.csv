@@ -1,0 +1,31 @@
+p0,p1,p2,p3,p4,p5,p6,p7,objective,elapsed_sec
+8,40,#pragma clang loop unrolling full, ,96,16,cores,balanced,0.24373,56.32734203338623
+2,40, , ,4,128,sockets,none,0.8550800000000001,87.8252317905426
+2,200,#pragma clang loop unrolling full, ,4,32,cores,compact,1.308905,123.8248450756073
+192,100,#pragma clang loop unrolling full,#pragma omp parallel for,256,8,cores,scatter,0.212335,149.82952094078064
+128,128,#pragma clang loop unrolling full,#pragma omp parallel for,2,16,cores,scatter,0.197675,177.83943843841553
+32,160, ,#pragma omp parallel for,8,2,sockets,explicit,0.17152,203.87522196769714
+16,10,#pragma clang loop unrolling full,#pragma omp parallel for,2,128,cores,balanced,0.172975,229.96690344810486
+128,160, ,#pragma omp parallel for,128,64,sockets,scatter,0.197855,258.04333996772766
+128,100,#pragma clang loop unrolling full,#pragma omp parallel for,4,32,cores,scatter,0.198375,286.1092731952667
+96,20,#pragma clang loop unrolling full,#pragma omp parallel for,16,8,cores,none,0.190755,314.20341300964355
+4,40,#pragma clang loop unrolling full,#pragma omp parallel for,96,8,cores,compact,0.7118800000000001,346.3421223163605
+128,200,#pragma clang loop unrolling full, ,256,4,cores,balanced,0.190475,374.46913862228394
+128,64,#pragma clang loop unrolling full,#pragma omp parallel for,128,128,cores,scatter,0.190195,402.57848286628723
+128,20,#pragma clang loop unrolling full,#pragma omp parallel for,32,2,cores,scatter,0.19689,430.6798641681671
+128,128, ,#pragma omp parallel for,256,128,sockets,scatter,0.204525,458.88664388656616
+64,10, ,#pragma omp parallel for,96,128,threads,scatter,0.18586999999999998,484.9975469112396
+48,200, ,#pragma omp parallel for,2,128,cores,scatter,0.18141,511.1414177417755
+48,200,#pragma clang loop unrolling full, ,4,128,threads,scatter,0.17008,539.3702297210693
+8,200, ,#pragma omp parallel for,8,128,threads,scatter,0.245455,565.8054554462433
+8,80,#pragma clang loop unrolling full, ,4,128,cores,scatter,0.24080000000000001,593.966304063797
+16,200,#pragma clang loop unrolling full, ,4,128,cores,scatter,0.172215,622.1401975154877
+48,200,#pragma clang loop unrolling full, ,2,128,threads,scatter,0.17412,650.3408243656158
+48,200, , ,2,16,cores,scatter,0.172805,678.5187983512878
+48,200,#pragma clang loop unrolling full, ,32,96,cores,scatter,0.173595,705.1681885719299
+48,200,#pragma clang loop unrolling full, ,128,2,sockets,scatter,0.173285,732.009391784668
+48,200, , ,2,96,sockets,scatter,0.17180499999999999,760.184070110321
+48,200, , ,4,2,threads,scatter,0.17376999999999998,788.3914425373077
+48,200,#pragma clang loop unrolling full,#pragma omp parallel for,4,4,sockets,scatter,0.17954,814.5833539962769
+48,200,#pragma clang loop unrolling full, ,4,16,cores,scatter,0.174215,841.1119205951691
+48,200,#pragma clang loop unrolling full,#pragma omp parallel for,4,256,cores,scatter,0.17929499999999998,867.291318655014
