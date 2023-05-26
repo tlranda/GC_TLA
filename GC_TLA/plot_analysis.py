@@ -223,6 +223,10 @@ def make_seed_invariant_name(name, args):
             break
     namesplit = fullsplit[-1].split('_')
     bench = namesplit[0]
+    for key, value in benchmark_names.items():
+        if key.lower() == bench.lower():
+            bench = value
+            break
     size = namesplit[1]
     seed = namesplit[2]
     suggest_legend_title = f"{size} {bench}"
@@ -494,7 +498,8 @@ def load_all(args):
             d.loc[failure_rows,'objective'] = np.nan
             if args.drop_overhead:
                 first_non_nan_idx = list(~np.isnan(d['objective'])).index(True)
-                d['elapsed_sec'] -= d['elapsed_sec'].iloc[first_non_nan_idx]-d['objective'].iloc[first_non_nan_idx]
+                d['elapsed_sec'] -= min(d['elapsed_sec'].iloc[0], (d['elapsed_sec'].iloc[1:].to_numpy() - d['elapsed_sec'].iloc[:-1].to_numpy())[first_non_nan_idx])
+                #d['elapsed_sec'] -= d['elapsed_sec'].iloc[first_non_nan_idx]-d['objective'].iloc[first_non_nan_idx]
             if args.as_speedup_vs is not None:
                 d['objective'] = args.as_speedup_vs / d['objective']
             # Potentially add assumption that at step/t=0 the objective is 1.0
