@@ -216,12 +216,11 @@ def make_seed_invariant_name(name, args):
 
 def make_seed_invariant_name(name, args):
     fullsplit = name.split('/')
-    name = fullsplit[1]
+    directory = fullsplit[1]
     for key in substitute.keys():
-        if key.lower() in name.lower():
+        if key.lower() in directory.lower():
             name = substitute[key]
             break
-    directory = os.path.dirname(name) if not args.merge_dirs else 'MERGE'
     namesplit = fullsplit[-1].split('_')
     bench = namesplit[0]
     size = namesplit[1]
@@ -375,37 +374,47 @@ def combine_seeds(data, args):
                     # Always add last known value (may have just been updated)
                     step_data.append(last_step[idx2])
             # Make data entries for new_columns, ignoring NaN/Inf values
-            finite = [_ for _ in step_data if np.isfinite(_)]
-            if len(finite) == 0:
-                new_columns['current'][idx] = np.nan
-                new_columns['obj'][idx] = np.nan
+            if len(step_data) == 1:
+                new_columns['current'][idx] = step_data[0]
+                new_columns['obj'][idx] = step_data[0]
                 new_columns['exe'][idx] = step
-                new_columns['min'][idx] = np.nan
-                new_columns['max'][idx] = np.nan
-                new_columns['std_low'][idx] = np.nan
-                new_columns['std_high'][idx] = np.nan
+                new_columns['min'][idx] = step_data[0]
+                new_columns['max'][idx] = step_data[0]
+                new_columns['std_low'][idx] = 0.0
+                new_columns['std_high'][idx] = 0.0
                 continue
-            mean = np.mean(finite)
-            trimmed = entry['fname'] in args.trim
-            if 'old_objective' in entry['data'][0].columns:
-                new_columns['current'][idx] = np.mean([_['old_objective'].iloc[idx] for _ in entry['data']])
             else:
-                new_columns['current'][idx] = mean
-            if not trimmed or new_data['type'] != 'best' or prev_mean is None or mean != prev_mean:
-                new_columns['obj'][idx] = mean
-                prev_mean = mean
-                new_columns['exe'][idx] = step
-                if args.x_axis == 'evaluation' and args.log_x:
-                    new_columns['exe'][idx] = step+1
-                new_columns['min'][idx] = min(finite)
-                new_columns['max'][idx] = max(finite)
-                if new_data['type'] == 'best':
-                    new_columns['std_low'][idx] = new_columns['obj'][idx]-min(finite)
-                    new_columns['std_high'][idx] = max(finite)-new_columns['obj'][idx]
+                finite = [_ for _ in step_data if np.isfinite(_)]
+                if len(finite) == 0:
+                    new_columns['current'][idx] = np.nan
+                    new_columns['obj'][idx] = np.nan
+                    new_columns['exe'][idx] = step
+                    new_columns['min'][idx] = np.nan
+                    new_columns['max'][idx] = np.nan
+                    new_columns['std_low'][idx] = np.nan
+                    new_columns['std_high'][idx] = np.nan
+                    continue
+                mean = np.mean(finite)
+                trimmed = entry['fname'] in args.trim
+                if 'old_objective' in entry['data'][0].columns:
+                    new_columns['current'][idx] = np.mean([_['old_objective'].iloc[idx] for _ in entry['data']])
                 else:
-                    stddev = np.std(finite)
-                    new_columns['std_low'][idx] = stddev
-                    new_columns['std_high'][idx] = stddev
+                    new_columns['current'][idx] = mean
+                if not trimmed or new_data['type'] != 'best' or prev_mean is None or mean != prev_mean:
+                    new_columns['obj'][idx] = mean
+                    prev_mean = mean
+                    new_columns['exe'][idx] = step
+                    if args.x_axis == 'evaluation' and args.log_x:
+                        new_columns['exe'][idx] = step+1
+                    new_columns['min'][idx] = min(finite)
+                    new_columns['max'][idx] = max(finite)
+                    if new_data['type'] == 'best':
+                        new_columns['std_low'][idx] = new_columns['obj'][idx]-min(finite)
+                        new_columns['std_high'][idx] = max(finite)-new_columns['obj'][idx]
+                    else:
+                        stddev = np.std(finite)
+                        new_columns['std_low'][idx] = stddev
+                        new_columns['std_high'][idx] = stddev
         # Make new dataframe
         new_data['data'] = pd.DataFrame(new_columns).sort_values('exe')
         #new_data['data'] = new_data['data'][new_data['data']['obj'] > 0]
@@ -484,7 +493,8 @@ def load_all(args):
             failure_rows = np.where(d['objective'].to_numpy()-1==0)[0]
             d.loc[failure_rows,'objective'] = np.nan
             if args.drop_overhead:
-                d['elapsed_sec'] -= d['elapsed_sec'].iloc[0]-d['objective'].iloc[0]
+                first_non_nan_idx = list(~np.isnan(d['objective'])).index(True)
+                d['elapsed_sec'] -= d['elapsed_sec'].iloc[first_non_nan_idx]-d['objective'].iloc[first_non_nan_idx]
             if args.as_speedup_vs is not None:
                 d['objective'] = args.as_speedup_vs / d['objective']
             # Potentially add assumption that at step/t=0 the objective is 1.0
@@ -743,7 +753,7 @@ def plot_source(fig, ax, breaks, idx, source, args, ntypes, top_val=None):
             # Main line = mean
             mpl_marker = 'o'
             if len(data['obj']) > 1:
-                cutoff = data['obj'].to_list().index(max(data['obj']))
+                cutoff = data['obj'].to_list().index(max(data['obj'][~np.isnan(data['obj'])]))
                 axes.plot([0]+data['exe'][:min(cutoff+1, len(data))].tolist(), [1]+data['obj'][:min(cutoff+1,len(data))].tolist(),
                         label=f"Mean {source['name']}" if ntypes > 1 else source['name'],
                         marker=mpl_marker, color=color, zorder=1)
@@ -862,11 +872,7 @@ def main(args):
         text_analysis(data, args)
     if not args.no_plots:
         # Determine if a vertical break is needed and where
-        try:
-            y_data = np.vstack([d['data'].obj.to_numpy() for d in data])
-        except:
-            import pdb
-            pdb.set_trace()
+        y_data = np.vstack([d['data'].obj.to_numpy() for d in data])
         # Never need vertical breaks if max speedup is less than 3
         if np.max(y_data) > 40:
             y_flat = y_data.ravel()
@@ -903,10 +909,12 @@ def main(args):
             del figures[-1], axes[-1], names[-1]
         min_mul = 0.9983
         max_mul = 1+(1-min_mul)
-        xlims = [min_mul * min([min(d['data'].exe) for d in data]),
-                 max_mul * max([max(d['data'].exe) for d in data])]
-        ylims = [min_mul * min([min(d['data'].obj) for d in data]),
-                 max_mul * max([max(d['data'].obj) for d in data])]
+        finite_x = [d['data'].exe[~np.isnan(d['data'].exe)] for d in data]
+        finite_y = [d['data'].obj[~np.isnan(d['data'].obj)] for d in data]
+        xlims = [min_mul * min([min(x) for x in finite_x]),
+                 max_mul * max([max(x) for x in finite_x])]
+        ylims = [min_mul * min([min(y) for y in finite_y]),
+                 max_mul * max([max(y) for y in finite_y])]
         for (fig, ax, name) in zip(figures, axes, names):
             # make x-axis data
             if args.pca is not None and args.pca != []:

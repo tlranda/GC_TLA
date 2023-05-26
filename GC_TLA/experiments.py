@@ -266,7 +266,9 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
                 if key.lower() != axis:
                     continue
                 invoke = f"python -m GC_TLA.plot_analysis --output {experiment_short}_{target.lower()}_{axis} "+\
-                         f"--inputs Data/*_fewshot/*_{target.upper()}_*.csv "
+                         f"--inputs Data/ytopt_bo_fewshot/*_{target.upper()}_*.csv "+\
+                         f"Data/gptune_fewshot/*_{target.upper()}_*.csv "+\
+                         f"Data/gc_tla_fewshot/*_{target.upper()}_*.csv "
                 if 'fig_pts' in sect.keys():
                     invoke += f"--fig-pts {sect['fig_pts']} "
                 if sect['as_speedup']:
