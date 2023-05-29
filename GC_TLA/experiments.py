@@ -415,7 +415,7 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
             raise ValueError(f"Unknown version {sect['version']}")
     elif key == "BRUTE_FORCE":
         # PLACEHOLDER -- SHOULD BE PARAMETERIZED LATER
-        invoke = "python3 brute_force.py --exhaust Data/oracle/all_XL.csv --traces Data/*fewshot/*_XL_*.csv "+\
+        invoke = "python3 -m GC_TLA.brute_force --exhaust Data/oracle/all_XL.csv --traces Data/*fewshot/*_XL_*.csv "+\
                  "--plot --format svg"
         info = verify_output(f"BruteForce.svg", runtype, invoke, 1, args)
         calls += info[0]
