@@ -320,12 +320,12 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
         calls += info[0]
         bluffs += info[1]
     elif key == 'GENERATED_TIME':
-        invoke = f'python -m GC_TLA.reject_plot --files Data/rejection/*XL* --call iter_time'
+        invoke = f'python -m GC_TLA.reject_plot --files Data/rejection_traces/*XL* --call iter_time'
         info = verify_output("iter_time.pdf", runtype, invoke, 1, args)
         calls += info[0]
         bluffs += info[1]
     elif key == 'GENERATED_REJECT':
-        invoke = f'python -m GC_TLA.reject_plot --files Data/rejection/*XL* --call reject --ignore Data/rejection/*CopulaGAN* --xlim {sect["xlim"]}'
+        invoke = f'python -m GC_TLA.reject_plot --files Data/rejection_traces/*XL* --call reject --ignore Data/rejection_traces/*CopulaGAN* --xlim {sect["xlim"]}'
         info = verify_output("reject.pdf", runtype, invoke, 1, args)
         calls += info[0]
         bluffs += info[1]

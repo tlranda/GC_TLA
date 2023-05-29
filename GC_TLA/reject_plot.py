@@ -76,9 +76,8 @@ def load(args):
 # Make a cleaner filename for legends etc
 def name_cleaner(name):
     name = os.path.basename(name)
-    # Expected format: REJECT_{METHOD}_problem.{SIZE}_{SEED}.csv
+    # Expected format: REJECT_{METHOD}_{SIZE}_{SEED}.csv
     fields = name.split('_')
-    fields[2] = fields[2].split('.')[1]
     name = '_'.join([fields[_] for _ in [1,2]])
     return name
 
@@ -238,7 +237,8 @@ def finalize(names, infos, figures, axes, args):
         if args.name is not None and args.name != '':
             name[0] += args.name
         name = '.'.join(name)
-        fig.savefig(name, format=args.format, bbox_inches='tight')
+        fig.tight_layout()
+        fig.savefig(name, format=args.format)
 
 def main(args=None):
     if args is None:
