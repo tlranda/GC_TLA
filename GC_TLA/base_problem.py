@@ -97,6 +97,8 @@ class BaseProblem(setWhenDefined):
         self.n_params = len(self.params)
         if oracle is not None:
             self.initialize_oracle()
+        if self.selflog is not None and os.path.exists(self.selflog):
+            os.remove(self.selflog)
         self.time_start = time.time()
 
     def initialize_oracle(self):

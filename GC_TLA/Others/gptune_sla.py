@@ -19,6 +19,7 @@ def build():
     parser.add_argument('-nrun', type=int, default=20, help='Number of runs per task')
     parser.add_argument('-seed', type=int, default=1234, help='Set seed')
     parser.add_argument('-builder', choices=['polybench', 'ecp'], default='polybench', help="Problem builder")
+    parser.add_argument('-output', default='gptune_results.csv', help="Output file name")
     return parser
 
 def parse(parser, args=None):
@@ -27,13 +28,7 @@ def parse(parser, args=None):
     return args
 
 def localized_load(benchmark):
-    real_names = [_ for _ in os.listdir() if os.path.isdir(_) and _.endswith('_exp')]
-    look_names = [_.lstrip('_')[:-4] for _ in real_names]
-    try:
-        bench_dir = real_names[look_names.index(benchmark)]
-    except ValueError:
-        raise ValueError(f"Could not locate {benchmark} -- available: {look_names}")
-    HERE = os.path.dirname(os.path.abspath(__file__))+'/'+bench_dir
+    HERE = os.getcwd()
     sys.path.insert(0, HERE)
     from problem import input_space, lookup_ival
     kwargs = {}
@@ -66,7 +61,7 @@ def main():
     else:
         raise ValueError(f"Unsupported problem builder {args.builder}")
     HERE, input_space, lookup_ival, kwargs = localized_load(args.benchmark)
-    problem_lookup = problem_lookup(lookup_ival, input_space, HERE, name=args.benchmark+"_Problem", returnmode='GPTune', selflog=HERE+'/results.csv', **kwargs)
+    problem_lookup = problem_lookup(lookup_ival, input_space, HERE, name=args.benchmark+"_Problem", returnmode='GPTune', selflog=HERE+'/'+args.output, **kwargs)
     my_problem = problem_lookup(args.size.upper())
     objectives = my_problem.objective
     def seqchoice(obj):
@@ -82,7 +77,7 @@ def main():
     problem = TuningProblem(IS,PS,OS, objectives, constraints, None)
 
     tuning_metadata = {
-        "tuning_problem_name": my_problem.name.split('Problem')[0][:-1],
+        "tuning_problem_name": my_problem.name.split('Problem')[0][:-1].replace('/','__'),
         "use_crowd_repo": "no",
         "machine_configuration": {
             "machine_name": "swing",

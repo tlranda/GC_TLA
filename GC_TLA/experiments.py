@@ -228,9 +228,8 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
                 if parallel and loopct % args.n_parallel != args.parallel_id:
                     continue
                 outfile = f"Data/gptune_fewshot/{experiment_short}_{target.upper()}_{seed}.csv"
-                invoke = f"python -m GC_TLA.Others.gptune_sla -benchmark {experiment_short} "+\
-                         f"-inputs {' '.join(['Data/'+experiment_short+'_'+i.upper()+'*.csv' for i in sect['inputs']])} "+\
-                         f"-target {target} -nrun {sect['evals']} -seed {seed} -output {outfile}"
+                invoke = f"python -m GC_TLA.Others.gptune_sla -benchmark {experiment} "+\
+                         f"-size {target} -nrun {sect['evals']} -seed {seed} -output {outfile}"
                 info = verify_output(outfile, runtype, invoke, expect, args)
                 calls += info[0]
                 bluffs += info[1]
