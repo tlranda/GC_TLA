@@ -41,16 +41,7 @@ def parse(parser, args=None):
 
 # Special rules for certain benchmarks that are otherwise hard to rip out of the problem import
 def localized_load(benchmark):
-    real_names = [_ for _ in os.listdir() if os.path.isdir(_) and _.endswith('_exp')]
-    look_names = [_.lstrip('_')[:-4] for _ in real_names]
-    if benchmark not in ['.', '..']:
-        try:
-            bench_dir = real_names[look_names.index(benchmark)]
-        except ValueError:
-            raise ValueError(f"Could not locate {benchmark} -- available: {look_names}")
-        HERE = os.path.dirname(os.path.abspath(__file__))+'/'+bench_dir
-    else:
-        HERE = os.path.dirname(os.path.abspath(__file__))+'/'+benchmark
+    HERE = os.getcwd()
     sys.path.insert(0, HERE)
     from problem import input_space, lookup_ival
     kwargs = {}
@@ -75,17 +66,9 @@ def localized_load(benchmark):
     return HERE, input_space, lookup_ival, kwargs
 
 def infer_size(fname, lookup_ival):
-    og_fname = fname
     fname = os.path.basename(fname) # Drop directories
     fname = fname.rsplit('.',1)[0] # Drop file extension
-    if fname.startswith('results'):
-        fname = fname[8:]
-    if fname.startswith('rf'):
-        fname = fname[3:]
-    if len(fname.split('_')) == 2:
-        fname = fname.split('_')[0].upper()
-    else:
-        raise ValueError(f"No support for this input file name {og_fname} (parse: {fname})")
+    fname = fname.rsplit('_',1)[1].upper() # Isolate size name
     inv_lookup = dict((v[0], k) for (k,v) in lookup_ival.items())
     return inv_lookup[fname]
 
@@ -297,7 +280,6 @@ def cleanup_history(args, problem_name):
         os.remove(historyfile)
 
 def main():
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     args = parse(build())
     ot.RandomGenerator.SetSeed(args.seed)
     np.random.seed(args.seed)
@@ -357,7 +339,7 @@ def main():
 
     # Meta Dicts are part of building surrogate models for each input, but have a lot of common
     # specification templated here
-    base_meta_dict = {'tuning_problem_name': target_problem.name.split('Problem')[0][:-1],
+    base_meta_dict = {'tuning_problem_name': target_problem.name.split('Problem')[0][:-1].replace('/','__'),
                       'modeler': 'Model_GPy_LCM',
                       'input_space': input_space,
                       'output_space': output_space,

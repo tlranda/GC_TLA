@@ -244,8 +244,8 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
                     builder = '-builder ecp'
                 else:
                     builder = ''
-                invoke = f"python -m GC_TLA.Others.gptune_dtla -benchmark {experiment_short} "+\
-                         f"-inputs {' '.join(['Data/'+experiment_short+'_'+i.upper()+'*.csv' for i in sect['inputs']])} "+\
+                invoke = f"python -m GC_TLA.Others.gptune_dtla -benchmark {experiment} "+\
+                         f"-inputs {' '.join(['Data/ytopt_bo_source_tasks/'+experiment_short+'_'+i.upper()+'.csv' for i in sect['inputs']])} "+\
                          f"{builder} -target {target} -nrun {sect['evals']} -seed {seed} -output {outfile} "+\
                          "-preserve-history"
                 info = verify_output(outfile, runtype, invoke, expect, args)
