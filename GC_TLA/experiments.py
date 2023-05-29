@@ -144,7 +144,7 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
             calls += info[0]
             bluffs += info[1]
             verifications += 1
-    if key == 'BO_FEWSHOT':
+    elif key == 'BO_FEWSHOT':
         for loopct, problem in enumerate(sect['targets']):
             if parallel and loopct % args.n_parallel != args.parallel_id:
                 continue
@@ -163,11 +163,11 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
         for loopct, target in enumerate(sect['targets']):
             if parallel and loopct % args.n_parallel != args.parallel_id:
                 continue
-            out_name = f"Data/DEFAULT_{target.upper()}.csv"
+            outname = f"Data/DEFAULT_{target.upper()}.csv"
             invoke = f"python -c \"import pandas as pd; from problem import {target}; "+\
                      f"obj = {target}.O3(); "+\
                      "pd.DataFrame({'objective': [obj], 'elapsed_time': [obj]})"+\
-                     f".to_csv('{out_name}', index=False)\""
+                     f".to_csv('{outname}', index=False)\""
             info = verify_output(outname, runtype, invoke, expect, args)
             calls += info[0]
             bluffs += info[1]

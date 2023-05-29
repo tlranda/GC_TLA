@@ -27,7 +27,7 @@ conditional_sampling_support = dict((k,check_conditional_sampling(v)) for (k,v) 
 from sdv.constraints import CustomConstraint, Between
 from sdv.sampling.tabular import Condition
 from ytopt.search.util import load_from_file
-
+from GC_TLA import gc_tla_utils
 
 def build():
     parser = argparse.ArgumentParser()
@@ -332,8 +332,6 @@ def online(targets, data, inputs, args, fname, speed = None, exhaust = None):
 
     # writing to csv file
     supplementary_fname = fname[:-4]
-    if supplementary_fname.endswith('_ALL'):
-        supplementary_fname = supplementary_fname[:-4]
     supplementary_fname += '_trace.csv'
     with open(supplementary_fname, 'w') as suppfile:
         suppwriter = writer(suppfile)
@@ -536,41 +534,7 @@ def online(targets, data, inputs, args, fname, speed = None, exhaust = None):
         csvfile.close()
 
 def load_input(obj, problemName, speed, args):
-    if obj.use_oracle:
-        fname = obj.plopper.kernel_dir+"/oracle_bo_"
-    else:
-        fname = obj.plopper.kernel_dir+"/results_rf_"
-    fname += obj.dataset_lookup[obj.problem_class][0].lower()+"_"
-    clsname = obj.__class__.__name__
-    fname += clsname[:clsname.rindex('_')].lower()+".csv"
-    if not os.path.exists(fname):
-        # First try backup
-        backup_fname = fname.rsplit('/',1)
-        backup_fname.insert(1, 'data')
-        backup_fname = "/".join(backup_fname)
-        if not os.path.exists(backup_fname):
-            # Next try replacing '-' with '_'
-            dash_fname = "_".join(fname.split('-'))
-            if not os.path.exists(dash_fname):
-                dash_backup_fname = "_".join(backup_fname.split('-'))
-                if not os.path.exists(dash_backup_fname):
-                    # Execute the input problem and move its results files to the above directory
-                    raise ValueError(f"Could not find {fname} for '{problemName}' "
-                                     f"[{obj.name}] and no backup at {backup_fname}"
-                                     "\nYou may need to run this problem or rename its output "
-                                     "as above for the script to locate it")
-                else:
-                    print(f"WARNING! {problemName} [{obj.name}] is using backup data rather "
-                            "than original data (Dash-to-Underscore Replacement ON)")
-                    fname = dash_backup_fname
-            else:
-                print("Dash-to-Underscore Replacement ON")
-                fname = dash_fname
-        else:
-            print(f"WARNING! {problemName} [{obj.name}] is using backup data rather "
-                    "than original data")
-            fname = backup_fname
-    dataframe = pd.read_csv(fname)
+    dataframe = gc_tla_utils.load_from_problem(obj, problemName)
     dataframe['input'] = pd.Series(int(obj.problem_class) for _ in range(len(dataframe.index)))
     dataframe['runtime'] = dataframe['objective']
     if args.load_log:
@@ -646,7 +610,7 @@ def main(args=None):
     if args.exhaust:
         exhaust(targets[-1], real_data, inputs, args, f"{output_prefix}_{targets[-1].name}_EXHAUST.csv", speed)
     elif not args.single_target:
-        online(targets, real_data, inputs, args, f"{output_prefix}_ALL.csv", speed, args.all_file)
+        online(targets, real_data, inputs, args, f"{output_prefix}.csv", speed, args.all_file)
 
 if __name__ == '__main__':
     main()
