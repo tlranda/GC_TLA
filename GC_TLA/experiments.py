@@ -383,30 +383,32 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
     elif key == "KL_DIVERGENCE":
         if sect['version'] == 1:
             for size in sect['suffixes']:
+                outname = f"{sect['save_name']}{size}.{sect['format']}"
                 invoke = "python3 -m GC_TLA.kl_divergence "+\
                          f"--exhaust {sect['exhaust']}{size}.csv "+\
                          f"--sample {' '.join(sect['sample'])} "+\
-                         f"--save-name {sect['save_name']}{size}.{sect['format']} "+\
+                         f"--save-name {outname} "+\
                          f"--x-ratio {' '.join([str(_) for _ in sect['x_ratio']])} "+\
                          f"--s-ratio {' '.join([str(_) for _ in sect['s_ratio']])} "+\
                          f"--expand-x {sect['expand_x']} "+\
                          f"--format {sect['format']} "+\
                          f"--version 1"
-                info = verify_output(f"{sect['save_name']}{size}.{sect['format']}", runtype, invoke, 1, args)
+                info = verify_output(outname, runtype, invoke, 1, args)
                 calls += info[0]
                 bluffs += info[1]
         elif sect['version'] == 2:
             for size in sect['suffixes']:
+                outname = f"{sect['save_name']}{size}.{sect['format']}"
                 invoke = "python3 -m GC_TLA.kl_divergence "+\
                          f"--exhaust {sect['exhaust']}{size}.csv "+\
                          f"--sample {' '.join(sect['sample'])} "+\
-                         f"--save-name {sect['save_name']}{size}.{sect['format']} "+\
+                         f"--save-name {outname} "+\
                          f"--x-ratio {' '.join([str(_) for _ in sect['x_ratio']])} "+\
                          f"--s-ratio {' '.join([str(_) for _ in sect['s_ratio']])} "+\
                          f"--expand-x {sect['expand_x']} "+\
                          f"--format {sect['format']} "+\
                          f"--version 2"
-                info = verify_output(f"{sect['save_name']}{size}.{sect['format']}", runtype, invoke, 1, args)
+                info = verify_output(outname, runtype, invoke, 1, args)
                 calls += info[0]
                 bluffs += info[1]
         else:
