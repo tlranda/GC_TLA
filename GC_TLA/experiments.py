@@ -196,28 +196,29 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
         for target in sect['targets']:
             for model in sect['models']:
                 for seed in sect['seeds']:
+                    outfile = f"inference_{experiment_short}.csv"
                     invoke = f"python -m GC_TLA.inference_test --n-refit {sect['refits']} --max-evals "+\
                              f"{sect['evals']} --seed {seed} --top {sect['top']} --inputs "+\
                              f"{' '.join([problem_prefix+'.'+_ for _ in sect['inputs']])} "+\
                              f"--target {problem_prefix}.{target} --model {model} --no-log-obj "
-                    info = verify_output(f"inference_{experiment_short}.csv", runtype, invoke, expect, args)
+                    info = verify_output(outfile, runtype, invoke, expect, args)
                     calls += info[0]
                     bluffs += info[1]
                     verifications += 1
     elif key == 'REJECTION':
         problem_prefix = sect['problem_prefix']
         for target in sect['targets']:
-            target = problem_prefix+'.'+target
+            target_module = problem_prefix+'.'+target
             for model in sect['models']:
                 for loopct, seed in enumerate(sect['seeds']):
                     if parallel and loopct % args.n_parallel != args.parallel_id:
                         continue
-                    outfile = f"REJECT_{model}_{target}_{seed}"
+                    outfile = f"REJECT_{model}_{target}_{seed}.csv"
                     invoke = f"python -m GC_TLA.base_online_tl --max-evals {sect['evals']} --n-refit 0 "+\
-                             f"--seed {seed} --top {sect['top']} --targets {target} --model {model} --inputs "+\
+                             f"--seed {seed} --top {sect['top']} --targets {target_module} --model {model} --inputs "+\
                              f"{' '.join([problem_prefix+'.'+i for i in sect['inputs']])} --skip-evals "+\
-                             f"--output-prefix {outfile}"
-                    info = verify_output(outfile+'_ALL.csv', runtype, invoke, expect, args)
+                             f"--output-prefix {outfile.rsplit('.',1)[0]}"
+                    info = verify_output(outfile, runtype, invoke, expect, args)
                     calls += info[0]
                     bluffs += info[1]
                     verifications += 1
