@@ -294,7 +294,7 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
                 bluffs += info[1]
                 verifications += 1
     elif key == "TSNE":
-        output_prefix = f'outputs/{experiment_short}_TSNE'
+        output_prefix = f'{experiment_short}_TSNE'
         invoke = "python -m GC_TLA.tsne_figure --problem problem.S --convert "+\
                  f"{' '.join(sect['convert'])} --quantile {' '.join([str(_) for _ in sect['quantile']])} --marker {sect['marker']} "+\
                  f"--output {output_prefix}"
