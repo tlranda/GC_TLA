@@ -347,12 +347,13 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
             else:
                 raise ValueError(f"{key} section parsing does not support multiple backups")
         for target in sect['targets']:
+            outname = f"Data/tables/{experiment_short}_{target}.csv"
             invoke = f"python -m GC_TLA.tables task --round {sect['round']} --quiet --average "+\
-                     f"--output-name TABLES_{experiment_short}_{target}.csv --overwrite "+\
+                     f"--output-name {outname} --overwrite "+\
                      f"--inputs {experiment_dir}/*_{target.upper()}_*.csv "+\
                      f"Data/*_fewshot/*_{target.upper()}_*.csv "
             if sect['as_speedup']:
-                invoke += f"--as-speedup-vs data/DEFAULT_{target.upper()}.csv --max-objective "
+                invoke += f"--as-speedup-vs Data/DEFAULT_{target.upper()}.csv --max-objective "
             budget = None
             try:
                 budget = sect['budgets'][experiment]
@@ -361,7 +362,7 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
             if budget is None:
                 budget = sect['max_budget']
             invoke += f"--budget {budget} "
-            info = verify_output(f"TABLES_{experiment_short}_{target}.csv", runtype, invoke, 2, args)
+            info = verify_output(outname, runtype, invoke, 2, args)
             calls += info[0]
             bluffs += info[1]
     elif key == "TABLE_COLLATE":
@@ -374,7 +375,7 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
             # Exit experiment directory; we need access to all experiments
             os.chdir(f"{HERE}")
             # Reach back up for args to grab all experiments
-            files = ' '.join([exp + f'/TABLES_{exp.rsplit("/",1)[1]}_{target}.csv' for exp in args.experiments for target in sect['targets']])
+            files = ' '.join([f'../Data/{exp}/tables/{exp.rsplit("/",1)[-1]}_{target}.csv' for exp in args.experiments for target in sect['targets']])
             invoke = f"python -m GC_TLA.tables collate --inputs {files} --round 2 --max-objective"
             info = verify_output(None, runtype, invoke, None, args)
             calls += info[0]

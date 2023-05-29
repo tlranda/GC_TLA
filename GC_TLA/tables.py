@@ -43,7 +43,7 @@ def parse(prs, args=None):
             args.inputs = allowed
         # Special ordering helps with table output like paper
         ordered = []
-        for selection in ['GaussianCopula', 'rf', 'gptune']:
+        for selection in ['gc', 'GaussianCopula', 'rf', 'bo', 'gptune']:
             for fname in args.inputs:
                 if selection in fname and fname not in ordered:
                     ordered.append(fname)
@@ -128,6 +128,8 @@ def load_task_inputs(args):
                 continue
             # Sometimes the objective is reported as exactly 1.0, which indicates inability to run that point.
             # Discard such rows when loading
+            if 'objective' not in fd.columns:
+                fd['objective'] = fd['exe_time']
             failure_rows = np.where(fd['objective'].to_numpy()-1==0)[0]
             fd.loc[failure_rows,'objective'] = np.nan
             # Drop unnecessary parameters
@@ -162,7 +164,7 @@ def table_analyze(data, args):
         if args.output_name is not None:
             FILE.write('GC_First,GC_Budget,GC_Budget_At,GC_Best,GC_Best_At,BO_Best,BO_Best_At,GPTune_Best,GPTune_Best_At\n')
         for eidx, entry in enumerate(data):
-            if 'GaussianCopula' in entry['name']:
+            if 'GaussianCopula' in entry['name'] or 'gc_tla' in entry['name']:
                 # First result
                 first_result = entry['data'].iloc[0]['obj']
                 # Budget result
