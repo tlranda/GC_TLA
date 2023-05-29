@@ -123,19 +123,13 @@ def parse(prs, args=None):
         args.fig_dims = set_size(args.fig_pts)
     return args
 
-substitute = {'BOOTSTRAP': "Bootstrap",
-              'NO': 'Gaussian Copula',
-              'gptune': "GPTune",
-              'GPTune': "GPTune",
-              'REFIT': "Gaussian Copula with Refit",
-              'results': "BO"}
 HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME = True
 
-benchmark_names = {'Lu': 'LU',
-                    'Amg': 'AMG',
-                    'Rsbench': 'RSBench',
-                    'Xsbench': 'XSBench',
-                    'Sw4lite': 'SW4Lite',
+benchmark_names = {'lu': 'LU',
+                    'amg': 'AMG',
+                    'rsbench': 'RSBench',
+                    'xsbench': 'XSBench',
+                    'sw4lite': 'SW4Lite',
                     }
 def try_familiar(name):
     if name in benchmark_names.keys():
@@ -144,70 +138,24 @@ def try_familiar(name):
 
 def make_seed_invariant_name(name, args):
     directory = os.path.dirname(name) if not args.merge_dirs else 'MERGE'
-    name = os.path.basename(name)
-    name_dot, ext = name.rsplit('.',1)
-    if name_dot.endswith("_ALL"):
-        name_dot = name_dot[:-4]
+    name_dot, extension = os.path.basename(name).rsplit(".", 1)
     try:
-        base, seed = name_dot.rsplit('_',1)
-        intval = int(seed)
-        name = base
+        basename, seednum = name_dot.rsplit('_',1)
+        seednum = int(seednum)
     except ValueError:
-        if '.' in name and args.drop_extension:
-            name, _ = name.rsplit('.',1)
-        name = name.lstrip("_")
+        basename = name_dot
     else:
         if args.unname_prefix != "" and name.startswith(args.unname_prefix):
-            name = name[len(args.unname_prefix):]
-        if '.' in name and args.drop_extension:
-            name, _ = name.rsplit('.',1)
-    name = name.lstrip("_")
-    suggest_legend_title = None
+            basename = name[len(args.unname_prefix):]
+    suggest_legend_title = basename
     if args.clean_names:
-        # Attempt to identify the number of _ characters from the directory name
-        if directory.endswith('_exp'):
-            temp_split = directory.split('/')
-            decide = lambda string : True if '_exp' in string else False
-            has_exp = temp_split[[decide(_) for _ in temp_split].index(True)]
-            # Subtract 1 due to _exp being a split
-            suggest_benchmark_length = len(has_exp.lstrip('_').split('_'))-1
-        else:
-            temp_split = os.path.dirname(os.path.abspath(name)).split('/')
-            decide = lambda string : True if '_exp' in string else False
-            has_exp = temp_split[[decide(_) for _ in temp_split].index(True)]
-            # Subtract 1 due to _exp being a split
-            suggest_benchmark_length = len(has_exp.lstrip('_').split('_'))-1
-            #global HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME
-            #if HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME:
-            #    print("WARNING: Unable to determine benchmark name length--this may cause errors.")
-            #    print("You can address this by ensuring data is encapsulated in a directory visible on relative paths with the name \"{benchmark_name}_exp\"")
-            #    HAS_NOT_WARNED_MAKE_SEED_INVARIANT_NAME = False
-            #suggest_benchmark_length = 1
-        name_split = name.split('_')
-        # Decompose for ease of semantics
-        if name.startswith('results'):
-            if 'gptune' in name.lower() and len(name_split) < 4:
-                off = 0
-            else:
-                off = suggest_benchmark_length
-            name_split = {'benchmark': '_'.join([_.capitalize() for _ in name_split[-off:]]).rstrip('.csv'),
-                          'size': name_split[-1-off].upper(),
-                          'short_identifier': substitute[name_split[0]] if 'gptune' not in name.lower() else 'GPTune',
-                          'full_identifier': '_'.join(name_split[:-1-off])}
-        elif 'xfer' in name:
-            name_split = {'benchmark': name[len('xfer_results_')+1:].capitalize(),
-                          'size': 'Force Transfer'}
-            name_split['short_identifier'] = f"XFER {name_split['benchmark']}"
-            name_split['full_identifier'] = f"Force Transfer {name_split['benchmark']}"
-        else:
-            name_split = {'benchmark': '_'.join([_.capitalize() for _ in name_split[:suggest_benchmark_length]]),
-                          'size': name_split[-1],
-                          'short_identifier': substitute[name_split[suggest_benchmark_length]],
-                          'full_identifier': '_'.join(name_split[suggest_benchmark_length+1:-1])}
-        # Reorder in reconstruction
-        name = name_split['short_identifier']
-        suggest_legend_title = f"{name_split['size']} {try_familiar(name_split['benchmark'].replace('_', ' '))}"
-    return name, directory, suggest_legend_title
+        name_split = basename.split('_')
+        name_components = {'benchmark': '_'.join([_.capitalize() for _ in name_split[:-1]]),
+                           'size': name_split[-1],
+                          }
+        basename = f"{name_components['benchmark']}"
+        suggest_legend_title = f"{name_components['size']} {try_familiar(name_components['benchmark'].lower())}"
+    return basename, directory, suggest_legend_title
 
 def make_baseline_name(name, args, df, col):
     name, directory, _ = make_seed_invariant_name(name, args)
@@ -639,7 +587,8 @@ def load_all(args):
                              'fname': fname})
                 inv_names.append(matchname)
     # Fix across seeds
-    return *combine_seeds(drop_seeds(data, args), args), legend_title
+    seeds, top_val = combine_seeds(drop_seeds(data, args), args)
+    return seeds, top_val, legend_title
 
 def prepare_fig(args):
     fig, ax = plt.subplots(figsize=tuple(args.fig_dims))

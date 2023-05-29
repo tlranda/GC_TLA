@@ -265,7 +265,7 @@ def build_test_suite(experiment, runtype, args, key, problem_sizes=None):
             for axis in ["walltime", "evaluation"]:
                 if key.lower() != axis:
                     continue
-                invoke = f"python -m GC_TLA.plot_analysis --output {experiment_short}_{target.lower()}_{axis} "+\
+                invoke = f"python -m GC_TLA.plot_analysis --output {experiment_short}_{target.upper()}_{axis} "+\
                          f"--inputs Data/*_fewshot/*_{target.upper()}_*.csv "
                 if 'fig_pts' in sect.keys():
                     invoke += f"--fig-pts {sect['fig_pts']} "
