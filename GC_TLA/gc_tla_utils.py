@@ -1,4 +1,5 @@
-import os, pandas as pd
+import os, pandas as pd, sys
+from importlib import import_module
 
 def load_from_problem(obj, problemName=None):
     if problemName is None:
@@ -38,3 +39,16 @@ def load_from_problem(obj, problemName=None):
                     "than original data")
             fname = backup_fname
     return pd.read_csv(fname)
+
+def load_problem_module(name):
+    mod, attr = name.split('.')
+    mod += '.py'
+    dirname, basename = os.path.split(mod)
+    sys.path.insert(0, dirname)
+    module_name = os.path.splitext(basename)[0]
+    module = import_module(module_name)
+    return module.__getattr__(attr)
+
+def load_without_problem(name):
+    return load_from_problem(load_problem_module(name), name)
+

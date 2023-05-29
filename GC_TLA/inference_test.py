@@ -26,7 +26,8 @@ conditional_sampling_support = dict((k,check_conditional_sampling(v)) for (k,v) 
 
 from sdv.constraints import CustomConstraint, Between
 from sdv.sampling.tabular import Condition
-from ytopt.search.util import load_from_file
+#from ytopt.search.util import load_from_file
+from GC_TLA import gc_tla_utils
 
 
 def build():
@@ -314,49 +315,8 @@ def main(args=None):
     inputs, targets, frames = [], [], []
     # Fetch the target problem(s)'s plopper
     for idx, problemName in enumerate(args.inputs):
-        # NOTE: When specified as 'filename.attribute', the second argument 'Problem'
-        # is effectively ignored. If only the filename is given (ie: 'filename.py'),
-        # defaults to finding the 'Problem' attribute in that file
-        if problemName.endswith('.py'):
-            attr = 'Problem'
-        else:
-            pName, attr = problemName.split('.')
-            pName += '.py'
-        inputs.append(load_from_file(pName, attr))
-        # Load the best top x%
-        last_in = inputs[-1]
-        results_file = last_in.plopper.kernel_dir+"/results_rf_"
-        results_file += last_in.dataset_lookup[last_in.problem_class][0].lower()+"_"
-        last_in = last_in.__class__.__name__
-        results_file += last_in[:last_in.rindex('_')].lower()+".csv"
-        if not os.path.exists(results_file):
-            # First try backup
-            backup_results_file = results_file.rsplit('/',1)
-            backup_results_file.insert(1, 'data')
-            backup_results_file = "/".join(backup_results_file)
-            if not os.path.exists(backup_results_file):
-                # Next try replacing '-' with '_'
-                dash_results_file = "_".join(results_file.split('-'))
-                if not os.path.exists(dash_results_file):
-                    dash_backup_results_file = "_".join(backup_results_file.split('-'))
-                    if not os.path.exists(dash_backup_results_file):
-                        # Execute the input problem and move its results files to the above directory
-                        raise ValueError(f"Could not find {results_file} for '{problemName}' "
-                                         f"[{inputs[-1].name}] and no backup at {backup_results_file}"
-                                         "\nYou may need to run this problem or rename its output "
-                                         "as above for the script to locate it")
-                    else:
-                        print(f"WARNING! {problemName} [{inputs[-1].name}] is using backup data rather "
-                                "than original data (Dash-to-Underscore Replacement ON)")
-                        results_file = dash_backup_results_file
-                else:
-                    print("Dash-to-Underscore Replacement ON")
-                    results_file = dash_results_file
-            else:
-                print(f"WARNING! {problemName} [{inputs[-1].name}] is using backup data rather "
-                        "than original data")
-                results_file = backup_results_file
-        dataframe = pd.read_csv(results_file)
+        inputs.append(gc_tla_utils.load_problem_module(problemName))
+        dataframe = gc_tla_utils.load_from_problem(inputs[-1], problemName)
         dataframe['input'] = pd.Series(int(inputs[-1].problem_class) for _ in range(len(dataframe.index)))
         dataframe['runtime'] = dataframe['objective']
         if args.load_log:
@@ -375,12 +335,7 @@ def main(args=None):
     real_data = pd.concat(frames).reset_index().drop(columns='index')
 
     for problemName in args.targets:
-        if problemName.endswith('.py'):
-            attr = 'Problem'
-        else:
-            pName, attr = problemName.split('.')
-            pName += '.py'
-        targets.append(load_from_file(pName, attr))
+        targets.append(gc_tla_utils.load_problem_module(problemName))
         # make target evaluations silent as we'll report them on our own
         #targets[-1].silent = True
         # Seed control
