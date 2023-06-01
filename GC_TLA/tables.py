@@ -281,7 +281,14 @@ def reorder_data(data, polybench_tasks, ecp_tasks):
     data = data.reset_index(drop=True)
     tasks = {}
     for idx, indication in enumerate(data.task):
-        ind = indication.split(' ',1)[0]
+        ind, size = indication.split(' ',1)
+        # Some names may require repair
+        for suite in ['polybench', 'exascale']:
+            if suite+'/' in ind:
+                ind = ind.split('/')
+                ind = ind[ind.index(suite)+1]
+                data.at[idx, 'task'] = ind+' '+size
+                break
         if ind not in tasks.keys():
             tasks[ind] = [idx]
         else:
@@ -327,10 +334,12 @@ def latexify(data,args):
     not_at_columns = [_ for idx,_ in enumerate(data.columns) if idx > 1 and not _.endswith('_At')]
     at_columns = [_ for _ in data.columns if _.endswith('_At')]
     latex_prelude()
-    polybench_tasks = ['3mm','covariance','floyd_warshall','heat3d','lu','syr2k']
+    polybench_tasks = ['3mm','covariance','floyd-warshall','heat-3d','lu','syr2k']
     ecp_tasks = ['amg','rsbench','sw4lite','xsbench']
-    stylize = {'3mm': '3mm', 'covariance': "Cov.", 'floyd_warshall': "Floyd-W.", 'heat3d': "Heat3d", 'lu': "LU",
+    stylize = {'3mm': '3mm', 'covariance': "Cov.", 'floyd-warshall': "Floyd-W.", 'heat-3d': "Heat3d", 'lu': "LU",
                'syr2k': "Syr2k", 'amg': "AMG", 'rsbench': "RSBench", 'xsbench': "XSBench", 'sw4lite': "SW4Lite"}
+    import pdb
+    pdb.set_trace()
     data, polybench_start, n_polybench, ecp_start, n_ecp, tasks = reorder_data(data, polybench_tasks, ecp_tasks)
     seen_tasks = []
     for (idx, row) in data.iterrows():
