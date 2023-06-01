@@ -1,7 +1,8 @@
 import numpy as np, pandas as pd
 from scipy import stats
-from sdv.tabular import GaussianCopula
-from sdv.constraints import CustomConstraint, Between
+from sdv.metadata import SingleTableMetadata
+from sdv.single_table import GaussianCopulaSynthesizer
+from sdv.constraints import ScalarRange
 from sdv.sampling.tabular import Condition
 import matplotlib
 import matplotlib.pyplot as plt
@@ -102,14 +103,20 @@ target_truth = pd.DataFrame(dict(((f"x{idx}", ticks_tl) for idx in range(len(coe
 
 # Prepare a Gaussian Copula model
 constraint_low, constraint_high = (1,3)
-constraints = [Between(column='size', low=constraint_low, high=constraint_high)]
-transformers = dict((k, 'float') if k == 'y' else (k, 'categorical') for k in source_data.columns)
-model = GaussianCopula(field_names=transformers.keys(),
-                       field_transformers=transformers,
-                       constraints=constraints,
-                       min_value=None,
-                       max_value=None,
+constraints = [{'constraint_class': 'ScalarRange',
+               'constraint_parameters':
+                    {'column_name': 'size',
+                     'low_value': constraint_low,
+                     'high_value': constraint_high,
+                     'strict_boundaries': False,},
+              }]
+metadata = SingleTableMetadata()
+#metadata.detect_from_dataframe(source_data)
+[metadata.add_column(column_name=name, sdtype='categorical') if name != 'size' else metadata.add_column(column_name=name, sdtype='numerical') for name in source_data.columns]
+model = GaussianCopulaSynthesizer(metadata,
+                       enforce_min_max_values=False,
                        )
+model.add_constraints(constraints)
 model.fit(source_data)
 
 n_samples = 10
@@ -131,7 +138,7 @@ n_samples = 10
 **********************************************'''
 
 # Model components: Extract covariance and univariates
-model_covariance = model._model.covariance
+model_covariance = model._model.correlation
 model_univariates = model._model.univariates
 
 # ABUSE OF KNOWLEDGE: All categories for x* have EQUAL OCCURRENCE COUNTS
@@ -139,8 +146,8 @@ model_univariates = model._model.univariates
 # And the actual order of categories that it produces are essentially random
 # As such, we can MANUALLY build a sorted order of categories that will DIFFER
 # from what SDV utilizes, but not mathematically diverge
-category_means = model._metadata._hyper_transformer._transformers_sequence[0].means
-category_means = pd.Series(category_means.values, index=sorted(category_means.index))
+mdict = model._data_processor._hyper_transformer._transformers_sequence[0].values_to_categories
+category_means = pd.Series(mdict.keys(), index=sorted(mdict.values()))
 n_categories = len(category_means)
 
 '''******************************************************
@@ -215,7 +222,7 @@ def reverse_transform(mimicry, n_categories, category_means, constraint_range):
             indexer = list(category_means.index).__getitem__
             data = pd.Series(indices).apply(indexer)
         elif '#' in column:
-            # Undo the Between constraint
+            # Undo the ScalarRange constraint
             column = column.split('#',1)[0]
             data = reverse_constraint(data, constraint_range)
         # The 'y' column and other numeric / non-categorical data are not transformed
@@ -248,7 +255,7 @@ def forward_constraint(data, constraint_range):
     data = (data * 0.95) + 0.025
     return np.log(data / (1.0 - data))
 
-manual_condition = pd.Series([forward_constraint(condition_value, (constraint_low, constraint_high))], index=['size#1#3.value'])
+manual_condition = pd.Series([forward_constraint(condition_value, (constraint_low, constraint_high))], index=['size#1#3'])
 
 '''**************************************************************************8*
 *                                                                             *
@@ -286,7 +293,7 @@ def get_conditional_distribution(normal_conditions, covariance):
     return cond_means, cond_covariance, cond_cols
 
 # 2a
-normal_condition = pd.Series([condition_value], index=['size#1#3.value'])
+normal_condition = pd.Series([condition_value], index=['size#1#3'])
 conditioned_means, conditioned_covariance, conditioned_cols = get_conditional_distribution(normal_condition, model_covariance)
 # 2b
 conditional_random_cdf = unconditional_GC_sampling(n_samples, conditioned_means, conditioned_covariance)
@@ -318,4 +325,4 @@ if __name__ == '__main__':
     print("MANUAL CONDITIONAL SAMPLING:")
     print(output)
     print("SDV CONDITIONAL SAMPLING:")
-    print(model.sample_conditions(conditions))
+    print(model.sample_from_conditions(conditions))
