@@ -4,11 +4,15 @@ from autotune.space import *
 from skopt.space import Real, Integer, Categorical
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
-from sdv.constraints import Between
+# NEW IMPORTS
+from ConfigSpace import EqualsCondition
+# UPDATE SDV
+from sdv.constraints import ScalarRange
 import inspect
 import time
 import os
-from GC_TLA.base_plopper import ECP_Plopper, Polybench_Plopper, Dummy_Plopper
+# NEW PLOPPER
+from GC_TLA.base_plopper import ECP_Plopper, Polybench_Plopper, LibE_Plopper, Dummy_Plopper
 
 parameter_lookups = {'UniformInt': CSH.UniformIntegerHyperparameter,
                      'NormalInt': CSH.NormalIntegerHyperparameter,
@@ -57,14 +61,17 @@ class setWhenDefined():
 # Should be merge-able with Autotune's TuningProblem
 class BaseProblem(setWhenDefined):
     # Many subclasses will override the pre-init space with default attributes
-    def __init__(self, input_space: Space = None, parameter_space: Space = None,
-                 output_space: Space = None, problem_params: dict = None, problem_class: int = None,
+    def __init__(self, input_space: Space = None, space_alteration_callback: callable = None,
+                 parameter_space: Space = None, output_space: Space = None,
+                 problem_params: dict = None, problem_class: int = None,
                  plopper: object = None, constraints = None, models = None, name = None,
                  constants = None, silent = False, use_capital_params = False,
                  returnmode = 'ytopt', selflog = None, ignore_runtime_failure = False,
                  oracle = None, use_oracle = False, **kwargs):
         # Load problem attribute defaults when available and otherwise required (and None)
         self.overrideSelfAttrs()
+        if self.space_alteration_callback is not None:
+            self.space_alteration_callback()
         if self.name is None:
             self.name = self.__class__.__name__+'_size_'+str(problem_class)
         self.request_output_prefix = f"results_{problem_class}"
@@ -226,6 +233,36 @@ def import_method_builder(clsref, lookup, default, oracles):
             raise ValueError(f"Module defining '{clsref.__name__}' has no attribute '{name}'")
     return getattr_fn
 
+# NEW PROBLEM BUILDER
+def libe_problem_builder(lookup, input_space_definition, there, default=None, name="LibE_Problem", plopper_class=LibE_Plopper, oracles=dict(), **original_kwargs):
+    if type(input_space_definition) is not CS.ConfigurationSpace:
+        input_space_definition = BaseProblem.configure_space(input_space_definition)
+    class LibE_Problem(BaseProblem):
+        input_space = input_space_definition
+        parameter_space = None
+        # THIS MAY CHANGE
+        output_space = Space([Real(0.0, inf, name='time')])
+        problem_params = dict((p.lower(), 'categorical') for p in input_space_definition.get_hyperparameter_names())
+        categorical_cast = dict((p.lower(), 'str') for p in input_space_definition.get_hyperparameter_names())
+        constraints = [ScalarRange(column_name='input', low_value=min(lookup.keys()), high_value=max(lookup.keys()), strict_boundaries=False)]
+        dataset_lookup = lookup
+        def __init__(self, class_size, **kwargs):
+            # Allow  anything to be overridden by passing it in as top priority
+            for k, v in original_kwargs.items():
+                kwargs.setdefault(k,v)
+            expect_kwargs = {'use_capital_params': True,
+                             'problem_class': class_size,
+                             'plopper': plopper_class(there+"/speed3d.sh", there, output_extension='.sh')
+                            }
+            for k, v in expect_kwargs.items():
+                kwargs.setdefault(k,v)
+            super().__init__(**kwargs)
+    LibE_Problem.__name__ = name
+    inv_lookup = dict((v[0], k) for (k,v) in lookup.items())
+    if default is None:
+        default = inv_lookup['S_2']
+    return import_method_builder(LibE_Problem, inv_lookup, default, oracles)
+
 def dummy_problem_builder(lookup, input_space_definition, there, default=None, name="Dummy_Problem", plopper_class=Dummy_Plopper, oracles=dict(), **original_kwargs):
     if type(input_space_definition) is not CS.ConfigurationSpace:
         input_space_definition = BaseProblem.configure_space(input_space_definition)
@@ -235,7 +272,7 @@ def dummy_problem_builder(lookup, input_space_definition, there, default=None, n
         output_space = Space([Real(0.0, inf, name='time')])
         problem_params = dict((p.lower(), 'categorical') for p in input_space_definition.get_hyperparameter_names())
         categorical_cast = dict((p.lower(), 'str') for p in input_space_definition.get_hyperparameter_names())
-        constraints = [Between(column='input', low=min(lookup.keys()), high=max(lookup.keys()))]
+        constraints = [ScalarRange(column_name='input', low_value=min(lookup.keys()), high_value=max(lookup.keys()), strict_boundaries=False)]
         dataset_lookup = lookup
         def __init__(self, class_size, **kwargs):
             # Allow anything to be overridden by passing it in as top priority
@@ -269,7 +306,7 @@ def ecp_problem_builder(lookup, input_space_definition, there, default=None, nam
         output_space = Space([Real(0.0, inf, name='time')])
         problem_params = dict((p.lower(), 'categorical') for p in input_space_definition.get_hyperparameter_names())
         categorical_cast = dict((p.lower(), 'str') for p in input_space_definition.get_hyperparameter_names())
-        constraints = [Between(column='input', low=min(lookup.keys()), high=max(lookup.keys()))]
+        constraints = [ScalarRange(column_name='input', low_value=min(lookup.keys()), high_value=max(lookup.keys()), strict_boundaries=False)]
         dataset_lookup = lookup
         def __init__(self, class_size, sourcefile='mmp.c', **kwargs):
             # Allow anything to be overridden by passing it in as top priority
@@ -314,7 +351,7 @@ def polybench_problem_builder(lookup, input_space_definition, there, default=Non
         output_space = Space([Real(0.0, inf, name='time')])
         problem_params = dict((p.lower(), 'categorical') for p in input_space_definition.get_hyperparameter_names())
         categorical_cast = dict((p.lower(), 'str') for p in input_space_definition.get_hyperparameter_names())
-        constraints = [Between(column='input', low=min(lookup.keys()), high=max(lookup.keys()))]
+        constraints = [ScalarRange(column_name='input', low_value=min(lookup.keys()), high_value=max(lookup.keys()), strict_boundaries=False)]
         dataset_lookup = lookup
         def __init__(self, class_size, **kwargs):
             # Allow anything to be overridden by passing it in as top priority

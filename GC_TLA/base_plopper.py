@@ -1,4 +1,4 @@
-import os, uuid, re, time, subprocess, numpy as np
+import os, uuid, re, time, subprocess, numpy as np, warnings
 
 """
     Expected usage:
@@ -160,7 +160,7 @@ class Plopper:
         # Final executable MUST be written to `outfile`
         return None
 
-    def runString(self, outfile, dictVal, *args, **kwargs):
+    def runString(self, outfile, attempt, dictVal, *args, **kwargs):
         # Return the string used to execute the attempt
         # outfile is the temporary filename that is generated for this particular instance, ignore it if no compilation/plotted values were used
         # Override as needed
@@ -196,14 +196,20 @@ class Plopper:
                             foundGroups.append(match)
                 f2.write(line)
 
-    def getTime(self, process, dictVal, *args, **kwargs):
+    def getTime(self, process, out, errs, outfile, attempt, dictVal, *args, **kwargs):
         # Define how to recover self-attributed objective values from the subprocess object
         # Return None to default to the python-based time library's timing of the event
         try:
-            return float(process.stdout.decode('utf-8'))
+            if out is None:
+                return float(process.stdout.decode('utf-8'))
+            else:
+                return float(out.decode('utf-8'))
         except ValueError:
             try:
-                return float(process.stderr.decode('utf-8'))
+                if errs is None:
+                    return float(process.stderr.decode('utf-8'))
+                else:
+                    return float(errs.decode('utf-8'))
             except ValueError:
                 return None
 
@@ -215,20 +221,35 @@ class Plopper:
     def execute(self, outfile, dictVal, *args, **kwargs):
         times = []
         failures = 0
+        attempt = 0
         while failures <= self.retries and len(times) < self.evaluation_tries:
-            run_str = self.runString(outfile, dictVal, *args, **kwargs)
+            run_str = self.runString(outfile, attempt, dictVal, *args, **kwargs)
             start = time.time()
             env = self.set_os_environ() if hasattr(self, 'set_os_environ') else None
-            execution_status = subprocess.run(run_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+            out, errs = None, None
+            if hasattr(self, app_timeout):
+                execution_status = subprocess.Popen(run_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+                try:
+                    out, errs = execution_status.communicate(timeout=self.app_timeout)
+                except subprocess.TimeoutExpired:
+                    execution_status.kill()
+                    # May need to clean up child processes here
+                    # for proc in psutil.proccess_iter(attrs=['pid','name']):
+                    #   if 'exe.pl' in proc.info['name']:
+                    #       proc.kill()
+                    out, errs = execution_status.communicate()
+            else:
+                execution_status = subprocess.run(run_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
             duration = time.time() - start
             if not self.ignore_runtime_failure and execution_status.returncode != 0:
                 # FAILURE
                 failures += 1
+                attempt += 1
                 print(f"FAILED: {run_str}")
                 continue
             # Find the execution time
             try:
-                derived_time = self.getTime(execution_status, dictVal, *args, **kwargs)
+                derived_time = self.getTime(execution_status, out, errs, outfile, attempt, dictVal, *args, **kwargs)
                 if derived_time is not None:
                     duration = derived_time
             except:
@@ -241,11 +262,15 @@ class Plopper:
                     print(f"FAILED: {run_str}")
                 else:
                     times.append(duration)
+            attempt += 1
         # Unable to evaluate this execution
         if failures > self.retries:
             print(f"OVERALL FAILED: {run_str}")
             return self.metric([self.infinity])
         return self.metric(times)
+
+    def createDict(self, x, params):
+        return dict((k,v) for (k,v) in zip(params, x))
 
     # Function to find the execution time of the interim file, and return the execution time as cost to the search module
     # Additional args provided here will propagate to:
@@ -261,7 +286,7 @@ class Plopper:
             interimfile = self.sourcefile
 
         # Generate intermediate file
-        dictVal = dict((k,v) for (k,v) in zip(params, x))
+        dictVal = self.createDict(x,params)
         # If there is a compiling string, we need to run plotValues
         compile_str = self.compileString(interimfile, dictVal, *args, **kwargs)
         if len(x) > 0 and (self.force_plot or compile_str is not None):
@@ -293,6 +318,42 @@ class Plopper:
         # Evaluation
         return self.execute(interimfile, dictVal, *args, **kwargs)
 
+class LibE_Plopper(Plopper):
+    """ Call to findRuntime should be: (x, params) """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.findReplace is None:
+            self.findReplace = findReplaceRegex(r"#(P[0-9]+)", prefix=tuple(["#",""]))
+
+    def createDict(self, x, params):
+        dictVal = {}
+        for p, v in zip(params, x):
+            if type(v) is np.ndarray and v.shape == ():
+                v = v.tolist()
+            dictVal[p] = v
+        return dictVal
+
+    def runString(self, outfile, attempt, dictVal, *args, **kwargs):
+        logfile = outfile.rsplit(".",1)[0] + f"_{attempt}.log"
+        cmd = f"timeout {kwargs['app_timeout']} "
+        cmd += f"mpiexec -n {kwargs['n_nodes']} --ppn {kwargs['ppn']} --depth {dictVal['p9']} "
+        cmd += f"sh {outfile} > {logfile} 2>&1"
+        return cmd
+    
+    def getTime(self, process, out, errs, outfile, attempt, dictVal, *args, **kwargs):
+        try:
+            logfile = outfile.rsplit(".",1)[0] + f"_{attempt}.log"
+            with open(logfile, "r") as logged:
+                lines = [_.rstrip() for _ in logged.readlines()]
+                for line in lines:
+                    if "Performance: " in line:
+                        split = [_ for _ in line.split(' ') if len(_) > 0]
+                        return -1 * float(split[1])
+        except Exception as e:
+            warnings.warn(f"Evaluation raised {e.__class__.__name__}: {e.args}")
+            return 1.23456789 # Sentinel value (positive as our objective lies in the negative domain for maximization)
+        warnings.warn(f"Evaluation failed to locate performance metric")
+        return 1.1111111 # Sentinel value for this failure
 
 class ECP_Plopper(Plopper):
     """ Call to findRuntime should be: (x, params, d_size) """,
@@ -310,12 +371,15 @@ class ECP_Plopper(Plopper):
                     "-I/lcrc/project/EE-ECP/jkoo/sw/clang13.2/llvm-project/release_pragma-clang-loop/projects/openmp/runtime/src"
         return clang_cmd
 
-    def runString(self, outfile, dictVal, *args, **kwargs):
+    def runString(self, outfile, attempt, dictVal, *args, **kwargs):
         return "srun -n1 "+outfile[:-len(self.output_extension)]+" ".join([str(_) for _ in args])
 
-    def getTime(self, process, dictVal, *arg, **kwargs):
+    def getTime(self, process, out, errs, outfile, attempt, dictVal, *arg, **kwargs):
         # Return last 3 floating point values from output by line
-        return [float(s) for s in process.stdout.decode('utf-8').split('\n')[-3:]]
+        if out is None:
+            return [float(s) for s in process.stdout.decode('utf-8').split('\n')[-3:]]
+        else:
+            return [float(s) for s in out.decode('utf-8').split('\n')[-3:]]
 
 
 class Polybench_Plopper(Plopper):
@@ -334,13 +398,15 @@ class Polybench_Plopper(Plopper):
                     f"-march=native -o {outfile[:-len(self.output_extension)]}"
         return clang_cmd
 
-    def runString(self, outfile, dictVal, *args, **kwargs):
+    def runString(self, outfile, attempt, dictVal, *args, **kwargs):
         return "srun -n1 "+outfile[:-len(self.output_extension)]
 
-    def getTime(self, process, dictVal, *arg, **kwargs):
+    def getTime(self, process, out, errs, outfile, attempt, dictVal, *arg, **kwargs):
         # Return last 3 floating point values from output by line
-        return [float(s) for s in process.stdout.decode('utf-8').split('\n')[-4:-1]]
-
+        if out is None:
+            return [float(s) for s in process.stdout.decode('utf-8').split('\n')[-4:-1]]
+        else:
+            return [float(s) for s in out.decode('utf-8').split('\n')[-4:-1]]
 
 class Dummy_Plopper(Plopper):
     def __init__(self, *args, dummy_low=0, dummy_high=1, **kwargs):
@@ -356,24 +422,24 @@ class Dummy_Plopper(Plopper):
         self.dummy_range = np.abs(dummy_high - dummy_low)
     def __str__(self):
         return "DUMMY"
-    def getTime(self, process, dictVal, *args, **kwargs):
+    def getTime(self, process, out, errs, outfile, attempt, dictVal, *args, **kwargs):
         return self.dummy_low + (self.dummy_range * np.random.rand())
-    def runString(self, outfile, dictVal, *args, **kwargs):
+    def runString(self, outfile, attempt, dictVal, *args, **kwargs):
         return "echo"
 
 
 def __getattr__(name):
     if name == 'Plopper':
         return Plopper
-    if name == 'ECP_Plopper':
+    elif name == 'ECP_Plopper':
         return ECP_Plopper
-    if name == 'Polybench_Plopper':
+    elif name == 'Polybench_Plopper':
         return Polybench_Plopper
-    if name == 'Dummy_Plopper':
+    elif name == 'Dummy_Plopper':
         return Dummy_Plopper
-    if name == 'findReplaceRegex':
+    elif name == 'findReplaceRegex':
         return findReplaceRegex
-    if name == 'LazyPlopper':
+    elif name == 'LazyPlopper':
         import torch # Currently used for serialization
         import atexit # Python < 3.10 bugfix for LazyPloppers
         import itertools # Chain fix for LazyPloppers
