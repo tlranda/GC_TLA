@@ -235,8 +235,6 @@ def import_method_builder(clsref, lookup, default, oracles):
 
 # NEW PROBLEM BUILDER
 def libe_problem_builder(lookup, input_space_definition, there, default=None, name="LibE_Problem", plopper_class=LibE_Plopper, oracles=dict(), **original_kwargs):
-    if type(input_space_definition) is not CS.ConfigurationSpace:
-        input_space_definition = BaseProblem.configure_space(input_space_definition)
     class LibE_Problem(BaseProblem):
         input_space = input_space_definition
         parameter_space = None
@@ -244,7 +242,10 @@ def libe_problem_builder(lookup, input_space_definition, there, default=None, na
         output_space = Space([Real(0.0, inf, name='time')])
         problem_params = dict((p.lower(), 'categorical') for p in input_space_definition.get_hyperparameter_names())
         categorical_cast = dict((p.lower(), 'str') for p in input_space_definition.get_hyperparameter_names())
-        constraints = [ScalarRange(column_name='input', low_value=min(lookup.keys()), high_value=max(lookup.keys()), strict_boundaries=False)]
+        constraints = [ScalarRange(column_name='input',
+                                   low_value=min([_[1] for _ in lookup.keys()]),
+                                   high_value=max([_[1] for _ in lookup.keys()]),
+                                   strict_boundaries=False)]
         dataset_lookup = lookup
         def __init__(self, class_size, **kwargs):
             # Allow  anything to be overridden by passing it in as top priority
@@ -256,6 +257,10 @@ def libe_problem_builder(lookup, input_space_definition, there, default=None, na
                             }
             for k, v in expect_kwargs.items():
                 kwargs.setdefault(k,v)
+            if hasattr(self, 'customize_space'):
+                self.customize_space()
+            if type(self.input_space_definition) is not CS.ConfigurationSpace:
+                self.input_space = BaseProblem.configure_space(self.input_space_definition)
             super().__init__(**kwargs)
     LibE_Problem.__name__ = name
     inv_lookup = dict((v[0], k) for (k,v) in lookup.items())
