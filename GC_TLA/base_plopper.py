@@ -51,7 +51,7 @@ class findReplaceRegex:
         for attrName, passedValue in zip(['prefix', 'suffix'], [prefix, suffix]):
             # Be nice about wrapping/replacing default values
             if passedValue is None:
-                passedValue = findReplaceRegex.empty_from_to
+                passedValue = findReplaceRegex.empty_from_to * self.nitems
             elif type(passedValue) is tuple and type(passedValue[0]) is str:
                 passedValue = [passedValue]
             # Validation of required length for each find-regex
@@ -227,7 +227,7 @@ class Plopper:
             start = time.time()
             env = self.set_os_environ() if hasattr(self, 'set_os_environ') else None
             out, errs = None, None
-            if hasattr(self, app_timeout):
+            if hasattr(self, 'app_timeout'):
                 execution_status = subprocess.Popen(run_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
                 try:
                     out, errs = execution_status.communicate(timeout=self.app_timeout)
@@ -269,7 +269,7 @@ class Plopper:
             return self.metric([self.infinity])
         return self.metric(times)
 
-    def createDict(self, x, params):
+    def createDict(self, x, params, *args, **kwargs):
         return dict((k,v) for (k,v) in zip(params, x))
 
     # Function to find the execution time of the interim file, and return the execution time as cost to the search module
@@ -286,7 +286,7 @@ class Plopper:
             interimfile = self.sourcefile
 
         # Generate intermediate file
-        dictVal = self.createDict(x,params)
+        dictVal = self.createDict(x, params, *args, **kwargs)
         # If there is a compiling string, we need to run plotValues
         compile_str = self.compileString(interimfile, dictVal, *args, **kwargs)
         if len(x) > 0 and (self.force_plot or compile_str is not None):
@@ -323,9 +323,9 @@ class LibE_Plopper(Plopper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.findReplace is None:
-            self.findReplace = findReplaceRegex(r"#(P[0-9]+)", prefix=tuple(["#",""]))
+            self.findReplace = findReplaceRegex([r"#(P[0-9]+)", r"#(C[0-9]+)"], prefix=[tuple(["#",""])]*2)
 
-    def createDict(self, x, params):
+    def createDict(self, x, params, *args, **kwargs):
         dictVal = {}
         for p, v in zip(params, x):
             if type(v) is np.ndarray and v.shape == ():
@@ -335,11 +335,11 @@ class LibE_Plopper(Plopper):
 
     def runString(self, outfile, attempt, dictVal, *args, **kwargs):
         logfile = outfile.rsplit(".",1)[0] + f"_{attempt}.log"
-        cmd = f"timeout {kwargs['app_timeout']} "
-        cmd += f"mpiexec -n {kwargs['n_nodes']} --ppn {kwargs['ppn']} --depth {dictVal['p9']} "
+        #cmd = f"timeout {kwargs['app_timeout']} "
+        cmd = f"mpiexec -n {kwargs['n_nodes']} --ppn {kwargs['ppn']} --depth {dictVal['P9']} "
         cmd += f"sh {outfile} > {logfile} 2>&1"
         return cmd
-    
+
     def getTime(self, process, out, errs, outfile, attempt, dictVal, *args, **kwargs):
         try:
             logfile = outfile.rsplit(".",1)[0] + f"_{attempt}.log"

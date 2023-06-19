@@ -240,8 +240,6 @@ def libe_problem_builder(lookup, input_space_definition, there, default=None, na
         parameter_space = None
         # THIS MAY CHANGE
         output_space = Space([Real(0.0, inf, name='time')])
-        problem_params = dict((p.lower(), 'categorical') for p in input_space_definition.get_hyperparameter_names())
-        categorical_cast = dict((p.lower(), 'str') for p in input_space_definition.get_hyperparameter_names())
         constraints = [ScalarRange(column_name='input',
                                    low_value=min([_[1] for _ in lookup.keys()]),
                                    high_value=max([_[1] for _ in lookup.keys()]),
@@ -253,17 +251,20 @@ def libe_problem_builder(lookup, input_space_definition, there, default=None, na
                 kwargs.setdefault(k,v)
             expect_kwargs = {'use_capital_params': True,
                              'problem_class': class_size,
-                             'plopper': plopper_class(there+"/speed3d.sh", there, output_extension='.sh')
+                             'plopper': plopper_class(there+"/speed3d.sh", there, output_extension='.sh',
+                                                      force_plot=True, mpi_ranks=class_size[0])
                             }
             for k, v in expect_kwargs.items():
                 kwargs.setdefault(k,v)
             if hasattr(self, 'customize_space'):
                 self.customize_space()
-            if type(self.input_space_definition) is not CS.ConfigurationSpace:
-                self.input_space = BaseProblem.configure_space(self.input_space_definition)
+            if type(self.input_space) is not CS.ConfigurationSpace:
+                self.input_space = BaseProblem.configure_space(self.input_space)
+            self.problem_params = dict((p.lower(), 'categorical') for p in self.input_space.get_hyperparameter_names())
+            self.categorical_cast = dict((p.lower(), 'str') for p in self.input_space.get_hyperparameter_names())
             super().__init__(**kwargs)
     LibE_Problem.__name__ = name
-    inv_lookup = dict((v[0], k) for (k,v) in lookup.items())
+    inv_lookup = dict((v, k) for (k,v) in lookup.items())
     if default is None:
         default = inv_lookup['S_2']
     return import_method_builder(LibE_Problem, inv_lookup, default, oracles)
