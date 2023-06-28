@@ -1,4 +1,4 @@
-import os, uuid, re, time, subprocess, numpy as np, warnings
+import os, uuid, re, time, subprocess, numpy as np, warnings, stat, signal, math
 
 """
     Expected usage:
@@ -142,7 +142,7 @@ class Plopper:
         pass
 
     def __str__(self):
-        return str(dict((k,v) for (k,v) in self.__dict__ if not callable(v)))
+        return str(dict((k,v) for (k,v) in self.__dict__.items() if not callable(v)))
         #return str({'sourcefile': self.sourcefile,
         #            'kernel_dir': self.kernel_dir,
         #            'outputdir': self.outputdir,
@@ -195,6 +195,11 @@ class Plopper:
                             line = findReplace.replace(match, str(dictVal[match]), line)
                             foundGroups.append(match)
                 f2.write(line)
+        # Ensure proper permissions on files
+        os.chmod(outputfile,
+                 stat.S_IRWXU |
+                 stat.S_IRGRP | stat.S_IXGRP |
+                 stat.S_IROTH | stat.S_IXOTH)
 
     def getTime(self, process, out, errs, outfile, attempt, dictVal, *args, **kwargs):
         # Define how to recover self-attributed objective values from the subprocess object
@@ -324,6 +329,48 @@ class LibE_Plopper(Plopper):
         super().__init__(*args, **kwargs)
         if self.findReplace is None:
             self.findReplace = findReplaceRegex([r"#(P[0-9]+)", r"#(C[0-9]+)"], prefix=[tuple(["#",""])]*2)
+        # Architecture information
+        if 'threads_per_node' in kwargs:
+            self.threads_per_node = kwargs['threads_per_node']
+        else:
+            proc = subprocess.run(['nproc'], capture_output=True)
+            if proc.returncode == 0:
+                self.threads_per_node = int(proc.stdout.decode('utf-8').strip())
+            else:
+                proc = subprocess.run(['lscpu'], capture_output=True)
+                for line in proc.stdout.decode('utf-8'):
+                    if 'CPU(s):' in line:
+                        self.threads_per_node = int(line.rstrip().rsplit(' ', 1)[1])
+                        break
+        self.gpus = 0
+        proc = subprocess.run('nvidia-smi -L'.split(' '), capture_output=True)
+        if proc.returncode == 0:
+           self.gpus = len(proc.stdout.decode('utf-8').strip().split('\n'))
+        if self.gpus > 0:
+            self.ranks_per_node = self.gpus
+        else:
+            self.ranks_per_node = 64
+        if hasattr(self, 'nodes'):
+            self.mpi_ranks = self.nodes * self.ranks_per_node
+        # Set machine name
+        if 'machine_identifier' in kwargs:
+            self.machine_identifier = kwargs['machine_identifier']
+        else:
+            # Automatic hostname identification
+            import platform
+            self.machine_identifier = platform.node()
+            if 'polaris' in self.machine_identifier:
+                self.machine_identifier = 'polaris'
+                if self.gpus > 0:
+                    self.machine_identifier += '-gpu'
+                else:
+                    self.machine_identifier += '-cpu'
+            elif 'theta' in self.machine_identifier:
+                self.machine_identifier = 'theta-knl'
+        if 'formatSTR' in kwargs:
+            self.cmd_template = kwargs['formatSTR']
+        else:
+            self.cmd_template = "mpiexec -n {mpi_ranks} --ppn {ranks_per_node} --depth {depth} --cpu-bind depth --env OMP_NUM_THREADS={depth} sh ./set_affinity_gpu_polaris.sh {interimfile}"
 
     def createDict(self, x, params, *args, **kwargs):
         dictVal = {}
@@ -334,11 +381,81 @@ class LibE_Plopper(Plopper):
         return dictVal
 
     def runString(self, outfile, attempt, dictVal, *args, **kwargs):
-        logfile = outfile.rsplit(".",1)[0] + f"_{attempt}.log"
-        #cmd = f"timeout {kwargs['app_timeout']} "
-        cmd = f"mpiexec -n {kwargs['n_nodes']} --ppn {kwargs['ppn']} --depth {dictVal['P9']} "
-        cmd += f"sh {outfile} > {logfile} 2>&1"
+        j = math.ceil(int(dictVal['P9']) / 64)
+        cmd = self.cmd_template.format(mpi_ranks=self.mpi_ranks, ranks_per_node=self.ranks_per_node,
+                                       depth=int(dictVal['P9'])//j, j=j, interimfile=outfile)
         return cmd
+
+    def execute(self, outfile, dictVal, *args, **kwargs):
+        times = []
+        failures = 0
+        attempt = 0
+        while failures <= self.retries and len(times) < self.evaluation_tries:
+            logfile = outfile.rsplit(".",1)[0] + f"_{attempt}.log"
+            run_str = self.runString(outfile, attempt, dictVal, *args, **kwargs)
+            attempt += 1
+            start = time.time()
+            env = self.set_os_environ() if hasattr(self, 'set_os_environ') else None
+            out, errs = None, None
+            logged = False
+            with open(logfile, "w") as logs:
+                if hasattr(self, 'app_timeout'):
+                    execution_status = subprocess.Popen(run_str, shell=True, stdout=logs, stderr=logs, env=env)
+                    child_pd = execution_status.pid
+                    try:
+                        # TODO: Set timeout from dictVal
+                        execution_status.communicate(timeout=self.app_timeout)
+                    except subprocess.TimeoutExpired:
+                        os.kill(child_pid, signal.SIGTERM)
+                        #execution_status.kill()
+                    else:
+                        logged = True
+                else:
+                    execution_status = subprocess.run(run_str, shell=True, stdout=logs, stderr=logs, env=env)
+                    logged = True
+            duration = time.time() - start
+            if logged and not self.ignore_runtime_failure and execution_status.returncode != 0:
+                # FAILURE
+                failures += 1
+                times.append(2. + execution_status.returncode / 1000)
+                print(f"FAILED: {run_str}")
+                eval_error_warning = "Error Code {execution_status.returncode}"
+                warnings.warn(eval_error_warning)
+                continue
+            # Find the execution time
+            elif logged:
+                logged = self.getTime(execution_status, out, errs, outfile, attempt-1, dictVal, *args, **kwargs)
+                if logged is not None:
+                    times.append(logged)
+                else:
+                    bad_logs_warning = f"Failed to read logs of successful evaluation of {outfile}"
+                    warnings.warn(bad_logs_warning)
+                    failures += 1
+                    times.append(1.1)
+            else:
+                # Timed out evaluations MAY be recoverable
+                to_result = self.getTime(execution_status, out, errs, outfile, attempt-1, dictVal, *args, **kwargs)
+                if to_result is None:
+                    failures += 1
+                    times.append(1.0)
+                    to_warning = f"Evaluation of {outfile} TIMED OUT; non-recoverable"
+                    warnings.warn(to_warning)
+                else:
+                    times.append(to_result)
+        # Unable to evaluate this execution
+        if failures > self.retries:
+            print(f"OVERALL FAILED: {run_str}")
+            return self.metric([self.infinity])
+        return self.metric(times)
+
+    def metric(self, figures_of_merit):
+        usable = [_ for _ in figures_of_merit if _ < 0]
+        if len(usable) > 0:
+            # Best observed result
+            return min(usable)
+        else:
+            # Gravest error is reported
+            return max(figures_of_merit)
 
     def getTime(self, process, out, errs, outfile, attempt, dictVal, *args, **kwargs):
         try:
@@ -350,10 +467,12 @@ class LibE_Plopper(Plopper):
                         split = [_ for _ in line.split(' ') if len(_) > 0]
                         return -1 * float(split[1])
         except Exception as e:
-            warnings.warn(f"Evaluation raised {e.__class__.__name__}: {e.args}")
-            return 1.23456789 # Sentinel value (positive as our objective lies in the negative domain for maximization)
-        warnings.warn(f"Evaluation failed to locate performance metric")
-        return 1.1111111 # Sentinel value for this failure
+            eval_warning = f"Evaluation raised {e.__class__.__name__}: {e.args}"
+            warnings.warn(eval_warning)
+            return 3.0 # Sentinel value - Python log processing error
+        eval_warning = f"Evaluation failed to locate performance metric"
+        warnings.warn(eval_warning)
+        return None # Sentinel value for this failure
 
 class ECP_Plopper(Plopper):
     """ Call to findRuntime should be: (x, params, d_size) """,

@@ -108,6 +108,11 @@ class BaseProblem(setWhenDefined):
             os.remove(self.selflog)
         self.time_start = time.time()
 
+    def __str__(self):
+        s = [self.name, f"Space has {self.input_space_size} configurations: {self.input_space}",
+             f"Plopper: {self.plopper}", ]
+        return "\n".join(s)
+
     def initialize_oracle(self):
         if type(self.oracle) is str:
             self.oracle = pd.read_csv(self.oracle)
@@ -252,12 +257,16 @@ def libe_problem_builder(lookup, input_space_definition, there, default=None, na
             expect_kwargs = {'use_capital_params': True,
                              'problem_class': class_size,
                              'plopper': plopper_class(there+"/speed3d.sh", there, output_extension='.sh',
-                                                      force_plot=True, mpi_ranks=class_size[0])
+                                                      force_plot=True, nodes=class_size[0])
                             }
             for k, v in expect_kwargs.items():
                 kwargs.setdefault(k,v)
             if hasattr(self, 'customize_space'):
-                self.customize_space()
+                self.plopper = kwargs['plopper']
+                self.customize_space(class_size)
+            elif 'customize_space' in kwargs:
+                self.plopper = kwargs['plopper']
+                kwargs['customize_space'](self, class_size)
             if type(self.input_space) is not CS.ConfigurationSpace:
                 self.input_space = BaseProblem.configure_space(self.input_space)
             self.problem_params = dict((p.lower(), 'categorical') for p in self.input_space.get_hyperparameter_names())
