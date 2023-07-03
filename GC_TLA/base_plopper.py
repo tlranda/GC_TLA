@@ -381,9 +381,9 @@ class LibE_Plopper(Plopper):
         return dictVal
 
     def runString(self, outfile, attempt, dictVal, *args, **kwargs):
-        j = math.ceil(int(dictVal['P9']) / 64)
+        j = math.ceil(self.ranks_per_node * int(dictVal['P9']) / 64)
         cmd = self.cmd_template.format(mpi_ranks=self.mpi_ranks, ranks_per_node=self.ranks_per_node,
-                                       depth=int(dictVal['P9'])//j, j=j, interimfile=outfile)
+                                       depth=int(dictVal['P9']), j=j, interimfile=outfile)
         return cmd
 
     def execute(self, outfile, dictVal, *args, **kwargs):

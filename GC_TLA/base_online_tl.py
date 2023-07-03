@@ -3,7 +3,11 @@ import numpy as np, pandas as pd
 import os, time, argparse
 import inspect
 from csv import writer
-from sdv.tabular import GaussianCopula, CopulaGAN, CTGAN, TVAE
+from sdv.single_table import (GaussianCopulaSynthesizer as GaussianCopula,
+                              CTGANSynthesizer as CTGAN,
+                              TVAESynthesizer as TVAE,
+                              CopulaGANSynthesizer as CopulaGAN)
+#from sdv.tabular import GaussianCopula, CopulaGAN, CTGAN, TVAE
 # Will only use one of these, make a selection dictionary
 sdv_models = {'GaussianCopula': GaussianCopula,
               'CopulaGAN': CopulaGAN,
@@ -24,7 +28,7 @@ def check_conditional_sampling(objectlike):
                "doesn't support conditional sampling" in source)
 conditional_sampling_support = dict((k,check_conditional_sampling(v)) for (k,v) in sdv_models.items())
 
-from sdv.constraints import CustomConstraint, Between
+from sdv.constraints import ScalarRange
 from sdv.sampling.tabular import Condition
 from ytopt.search.util import load_from_file
 from GC_TLA import gc_tla_utils
