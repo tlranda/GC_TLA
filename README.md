@@ -2,7 +2,7 @@
 
 Authors: Thomas Randall, Jaehoon Koo, Brice Videau, Michael Kruse, Xingfu Wu, Paul Hovland, Mary Hall, Rong Ge, Prasanna Balaprakash
 
-This repository is provided for transparency and ease-of-replication for our ICS'23 paper, ["Transfer-Learning-Based Autotuning Using Gaussian Copula"]().
+This repository is provided for transparency and ease-of-replication for our ICS'23 paper, ["Transfer-Learning-Based Autotuning Using Gaussian Copula"](https://dl.acm.org/doi/10.1145/3577193.3593712).
 
 ## Contact: Thomas Randall (tlranda@clemson.edu)
 ### May 15, 2023
