@@ -37,7 +37,10 @@ def persistent_model(H, persis_info, gen_specs, libE_info):
             for idx in samples.index[:n_sim]:
                 utilized.append(idx)
                 for key, value in samples.iloc[idx].items():
-                    H_o[i][key] = value
+                    try:
+                        H_o[filled][key] = value
+                    except ValueError: # mpi_ranks (would be KeyError, but ndarray is special)
+                        pass
                 filled += 1
             samples = samples.drop(index=utilized)
 

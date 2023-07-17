@@ -433,7 +433,7 @@ class LibE_Plopper(Plopper):
                 failures += 1
                 times.append(2. + execution_status.returncode / 1000)
                 print(f"FAILED: {run_str}")
-                eval_error_warning = "Error Code {execution_status.returncode}"
+                eval_error_warning = f"Error Code {execution_status.returncode}"
                 warnings.warn(eval_error_warning)
                 continue
             # Find the execution time
