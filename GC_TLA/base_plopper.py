@@ -142,7 +142,7 @@ class Plopper:
         pass
 
     def __str__(self):
-        return str(dict((k,v) for (k,v) in self.__dict__.items() if not callable(v)))
+        return str("{"+",\n".join([str(_[0])+": "+str(_[1]) for _ in dict((k,str(v)) for (k,v) in self.__dict__.items() if not callable(v)).items()])+"}")
         #return str({'sourcefile': self.sourcefile,
         #            'kernel_dir': self.kernel_dir,
         #            'outputdir': self.outputdir,
@@ -329,6 +329,8 @@ class LibE_Plopper(Plopper):
         super().__init__(*args, **kwargs)
         if self.findReplace is None:
             self.findReplace = findReplaceRegex([r"#(P[0-9]+)", r"#(C[0-9]+)"], prefix=[tuple(["#",""])]*2)
+
+    def set_architecture_info(self, **kwargs):
         # Architecture information
         if 'threads_per_node' in kwargs:
             self.threads_per_node = kwargs['threads_per_node']
@@ -342,16 +344,24 @@ class LibE_Plopper(Plopper):
                     if 'CPU(s):' in line:
                         self.threads_per_node = int(line.rstrip().rsplit(' ', 1)[1])
                         break
-        self.gpus = 0
-        proc = subprocess.run('nvidia-smi -L'.split(' '), capture_output=True)
-        if proc.returncode == 0:
-           self.gpus = len(proc.stdout.decode('utf-8').strip().split('\n'))
+        if 'gpus' in kwargs:
+            self.gpus = kwargs['gpus']
+        else:
+            self.gpus = 0
+            proc = subprocess.run('nvidia-smi -L'.split(' '), capture_output=True)
+            if proc.returncode == 0:
+               self.gpus = len(proc.stdout.decode('utf-8').strip().split('\n'))
         if self.gpus > 0:
             self.ranks_per_node = self.gpus
         else:
-            self.ranks_per_node = 64
-        if hasattr(self, 'nodes'):
-            self.mpi_ranks = self.nodes * self.ranks_per_node
+            self.ranks_per_node = self.threads_per_node
+        if 'nodes' in kwargs:
+            self.nodes = kwargs['nodes']
+        if 'mpi_ranks' in kwargs:
+            self.mpi_ranks = kwargs['mpi_ranks']
+        else:
+            if hasattr(self, 'nodes'):
+                self.mpi_ranks = self.nodes * self.ranks_per_node
         # Set machine name
         if 'machine_identifier' in kwargs:
             self.machine_identifier = kwargs['machine_identifier']
@@ -367,7 +377,7 @@ class LibE_Plopper(Plopper):
                     self.machine_identifier += '-cpu'
             elif 'theta' in self.machine_identifier:
                 self.machine_identifier = 'theta-knl'
-        if 'formatSTR' in kwargs:
+        if 'formatSTR' in kwargs and kwargs['formatSTR'] is not None:
             self.cmd_template = kwargs['formatSTR']
         else:
             self.cmd_template = "mpiexec -n {mpi_ranks} --ppn {ranks_per_node} --depth {depth} --cpu-bind depth --env OMP_NUM_THREADS={depth} sh ./set_affinity_gpu_polaris.sh {interimfile}"
@@ -382,6 +392,10 @@ class LibE_Plopper(Plopper):
 
     def runString(self, outfile, attempt, dictVal, *args, **kwargs):
         j = math.ceil(self.ranks_per_node * int(dictVal['P9']) / 64)
+        required_sysinfo = ['mpi_ranks', 'ranks_per_node']
+        assert all([hasattr(self,attr) for attr in required_sysinfo]), \
+               "Insufficient architecture information to form runString -- " +\
+               "specify or auto-determine properties via problem.set_architecture_info()"
         cmd = self.cmd_template.format(mpi_ranks=self.mpi_ranks, ranks_per_node=self.ranks_per_node,
                                        depth=int(dictVal['P9']), j=j, interimfile=outfile)
         return cmd

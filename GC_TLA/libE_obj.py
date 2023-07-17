@@ -15,10 +15,11 @@ def init_obj(H, persis_info, sim_specs, libE_info):
     for field in sim_specs['in']:
         point[field] = np.squeeze(H[field])
     # Pass along machine info to point for topology preparation
-    machine_info = sim_specs['user']['machine_info']
+    user_specs = sim_specs['user']
+    machine_info = user_specs['machine_info']
     point['machine_info'] = machine_info
 
-    y = sim_specs['user']['problem'].objective(point, sim_specs['in'], libE_info['workerID'])
+    y = user_specs['problem'].objective(point, sim_specs['in'], libE_info['workerID'])
 
     H_o = np.zeros(len(sim_specs['out']), dtype=sim_specs['out'])
     H_o['FLOPS'] = y

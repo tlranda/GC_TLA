@@ -15,21 +15,31 @@ def persistent_model(H, persis_info, gen_specs, libE_info):
     ps = PersistentSupport(libE_info, EVAL_GEN_TAG)
     user_specs = gen_specs['user']
     model = user_specs['model']
+    n_sim = user_specs['num_sim_workers']
 
     tag = None
     calc_in = None
     first_write = True
     fields = [i[0] for i in gen_specs['out']]
+    samples = []
 
     # Send batches until the manager sends stop tag
     while tag not in [STOP_TAG, PERSIS_STOP]:
-        # Generate search samples from the model
-        samples = model.sample_conditions(user_specs['conditions'], num_rows=user_specs['num_sim_workers'])
         # Hand off information
-        H_o = np.zeros(len(samples), dtype=gen_specs['out'])
-        for i, entry in samples.iterrows():
-            for key, value in entry.items():
-                H_o[i][key] = value
+        H_o = np.zeros(n_sim, dtype=gen_specs['out'])
+        filled = 0
+        while filled < n_sim:
+            # Replenish samples from the model as needed
+            if len(samples) == 0:
+                samples = model.sample_from_conditions(user_specs['conditions'])
+            # Use available samples
+            utilized = []
+            for idx in samples.index[:n_sim]:
+                utilized.append(idx)
+                for key, value in samples.iloc[idx].items():
+                    H_o[i][key] = value
+                filled += 1
+            samples = samples.drop(index=utilized)
 
         tag, Work, calc_in = ps.send_recv(H_o)
         if calc_in is not None:

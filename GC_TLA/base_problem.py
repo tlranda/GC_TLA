@@ -207,6 +207,25 @@ class BaseProblem(setWhenDefined):
         space.add_hyperparameters(params_list)
         return space
 
+    def set_space(self, new_space):
+        self.input_space = new_space
+        prod = 1
+        for param in self.input_space.get_hyperparameters():
+            if type(param) == CS.CategoricalHyperparameter:
+                prod *= len(param.choices)
+            elif type(param) == CS.OrdinalHyperparameter:
+                prod *= len(param.sequence)
+            elif type(param) == CS.Constant:
+                continue
+            elif type(param) == CS.UniformIntegerHyperparameter:
+                prod *= param.upper - param.lower
+            else:
+                # Could warn here, but it'll generate way too much output
+                # This catches when we don't know how to get a # of configurations
+                # As Normal range is not necessarily defined with strict ranges and floats are floats
+                continue
+        self.input_space_size = prod
+
 def import_method_builder(clsref, lookup, default, oracles):
     def getattr_fn(name, default=default, oracles=oracles):
         # Prevent some bugs where things that normal python getattr SHOULD be called
@@ -261,12 +280,19 @@ def libe_problem_builder(lookup, input_space_definition, there, default=None, na
                             }
             for k, v in expect_kwargs.items():
                 kwargs.setdefault(k,v)
+            SpaceNotCustomized = "Problem space not customized, but customize_space() available. Set architecture information and call again."
             if hasattr(self, 'customize_space'):
                 self.plopper = kwargs['plopper']
-                self.customize_space(class_size)
+                try:
+                    self.customize_space(class_size)
+                except ValueError:
+                    warnings.warn(SpaceNotCustomized)
             elif 'customize_space' in kwargs:
                 self.plopper = kwargs['plopper']
-                kwargs['customize_space'](self, class_size)
+                try:
+                    kwargs['customize_space'](self, class_size)
+                except ValueError:
+                    warnings.warn(SpaceNotCustomized)
             if type(self.input_space) is not CS.ConfigurationSpace:
                 self.input_space = BaseProblem.configure_space(self.input_space)
             self.problem_params = dict((p.lower(), 'categorical') for p in self.input_space.get_hyperparameter_names())
