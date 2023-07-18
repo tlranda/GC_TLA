@@ -25,7 +25,7 @@ def init_obj(H, persis_info, sim_specs, libE_info):
     H_o['FLOPS'] = y
     H_o['elapsed_sec'] = time.time() - start_time
     H_o['machine_identifier'] = [machine_info['identifier']]
-    for wrapped_field in ['mpi_ranks', 'ranks_per_node', 'gpu_enabled', 'libE_workers']:
+    for wrapped_field in ['mpi_ranks', 'threads_per_node', 'ranks_per_node', 'gpu_enabled', 'libE_workers']:
         H_o[wrapped_field] = [machine_info[wrapped_field]]
     H_o['libE_id'] = [libE_info['workerID']]
 

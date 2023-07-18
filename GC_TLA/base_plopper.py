@@ -420,13 +420,27 @@ class LibE_Plopper(Plopper):
                         # TODO: Set timeout from dictVal
                         execution_status.communicate(timeout=self.app_timeout)
                     except subprocess.TimeoutExpired:
-                        os.kill(child_pid, signal.SIGTERM)
-                        #execution_status.kill()
+                        #os.kill(child_pid, signal.SIGTERM)
+                        try:
+                            execution_status.kill()
+                        except:
+                            pass
+                        time.sleep(1)
                     else:
                         logged = True
                 else:
                     execution_status = subprocess.run(run_str, shell=True, stdout=logs, stderr=logs, env=env)
                     logged = True
+                # GPU cleanup
+                if hasattr(self, 'gpu_cleanup'):
+                    try:
+                        self.gpu_cleanup(outfile, atempt, dictVal, *args, **kwargs)
+                    except Exception as e:
+                        BadGPUCleanup = f"Bad GPU cleanup ({e.__class__})"
+                        for attr in ['msg', 'message', 'args']:
+                            if hasattr(e, attr):
+                                BadGPUCleanup += f" -- {getattr(e,attr)}"
+                        warnings.warn(BadGPUCleanup)
             duration = time.time() - start
             if logged and not self.ignore_runtime_failure and execution_status.returncode != 0:
                 # FAILURE
