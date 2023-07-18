@@ -162,6 +162,12 @@ class BaseProblem(setWhenDefined):
             x = np.asarray_chkfinite([point[k] for k in self.params]) # ValueError if any NaN or Inf
         else:
             x = [] # Prevent KeyErrors when there are no points to parameterize
+        # Some users may pass in additional keys via point. Ensure they are kept alive
+        inkeys = set(point.keys())
+        paramkeys = set(self.params)
+        extrakeys = inkeys.difference(paramkeys)
+        if len(extrakeys) > 0:
+            kwargs['extrakeys'] = dict((k,point[k]) for k in extrakeys)
         if not self.silent:
             print(f"CONFIG: {point}")
         if self.use_oracle and self.oracle is not None:

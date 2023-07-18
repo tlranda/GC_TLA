@@ -18,8 +18,12 @@ def init_obj(H, persis_info, sim_specs, libE_info):
     user_specs = sim_specs['user']
     machine_info = user_specs['machine_info']
     point['machine_info'] = machine_info
+    problem = user_specs['problem'][libE_info['workerID']]
+    # First time the output directory may not exist -- create it if needed
+    if not os.path.exists(problem.plopper.outputdir):
+        os.makedirs(problem.plopper.outputdir)
 
-    y = user_specs['problem'].objective(point, sim_specs['in'], libE_info['workerID'])
+    y = problem.objective(point, sim_specs['in'], libE_info['workerID'])
 
     H_o = np.zeros(len(sim_specs['out']), dtype=sim_specs['out'])
     H_o['FLOPS'] = y

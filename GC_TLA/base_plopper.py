@@ -434,7 +434,7 @@ class LibE_Plopper(Plopper):
                 # GPU cleanup
                 if hasattr(self, 'gpu_cleanup'):
                     try:
-                        self.gpu_cleanup(outfile, atempt, dictVal, *args, **kwargs)
+                        self.gpu_cleanup(outfile, attempt, dictVal, *args, **kwargs)
                     except Exception as e:
                         BadGPUCleanup = f"Bad GPU cleanup ({e.__class__})"
                         for attr in ['msg', 'message', 'args']:
