@@ -16,12 +16,17 @@ def persistent_model(H, persis_info, gen_specs, libE_info):
     user_specs = gen_specs['user']
     model = user_specs['model']
     n_sim = user_specs['num_sim_workers']
+    if 'remove_duplicates' in user_specs:
+        remove_duplicates = user_specs['remove_duplicates']
+    else:
+        remove_duplicates = None
 
     tag = None
     calc_in = None
     first_write = True
     fields = [i[0] for i in gen_specs['out']]
     samples = []
+    param_history = []
 
     # Send batches until the manager sends stop tag
     while tag not in [STOP_TAG, PERSIS_STOP]:
@@ -30,8 +35,10 @@ def persistent_model(H, persis_info, gen_specs, libE_info):
         filled = 0
         while filled < n_sim:
             # Replenish samples from the model as needed
-            if len(samples) == 0:
+            while len(samples) == 0:
                 samples = model.sample_from_conditions(user_specs['conditions'])
+                if remove_duplicates is not None:
+                    samples, param_history = remove_duplicates(samples, param_history, gen_specs['out'])
             # Use available samples
             utilized = []
             for idx in samples.index[:n_sim]:
