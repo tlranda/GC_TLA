@@ -36,17 +36,20 @@ def persistent_model(H, persis_info, gen_specs, libE_info):
             utilized = []
             for idx in samples.index[:n_sim]:
                 utilized.append(idx)
-                for key, value in samples.iloc[idx].items():
+                for key, value in samples.loc[idx].items():
                     try:
                         H_o[filled][key] = value
                     except ValueError: # mpi_ranks (would be KeyError, but ndarray is special)
                         pass
                 filled += 1
             samples = samples.drop(index=utilized)
+        print(f"[libE - generator {libE_info['workerID']}] creates points: {H_o}")
 
         tag, Work, calc_in = ps.send_recv(H_o)
+        print(f"[libE - generator {libE_info['workerID']}] receives points: {calc_in}")
         if calc_in is not None:
             if len(calc_in):
+                n_sim = len(calc_in)
                 b = []
                 for field_name, entry in zip(gen_specs['persis_in'], calc_in[0]):
                     try:

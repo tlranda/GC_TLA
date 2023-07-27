@@ -23,7 +23,9 @@ def init_obj(H, persis_info, sim_specs, libE_info):
     if not os.path.exists(problem.plopper.outputdir):
         os.makedirs(problem.plopper.outputdir)
 
+    print(f"[libE simulator - {libE_info['workerID']}] submits point: {point}")
     y = problem.objective(point, sim_specs['in'], libE_info['workerID'])
+    print(f"[libE simulator - {libE_info['workerID']}] receives objective for point: {point}")
 
     H_o = np.zeros(len(sim_specs['out']), dtype=sim_specs['out'])
     H_o['FLOPS'] = y
