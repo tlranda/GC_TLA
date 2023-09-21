@@ -116,7 +116,7 @@ def main():
     historydb.load_func_eval = False # We DO NOT WANT to have history loaded -- GPTune needs to evaluate things it proposes
     gt = GPTune(problem, computer=computer, data=data, options=options,
                 historydb=historydb, driverabspath=os.path.abspath(__file__))
-    data, modeler, stats = gt.MLA(NS=args.nrun, Igiven=giventask, NI=1, NS1=int(max(args.nrun//2,1)))
+    data, modeler, stats = gt.MLA(NS=args.nrun, Tgiven=giventask, NI=1, NS1=int(max(args.nrun//2,1)))
     print(f"stats: {stats}")
 
 if __name__ == '__main__':

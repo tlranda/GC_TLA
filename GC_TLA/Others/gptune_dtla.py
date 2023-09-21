@@ -1,6 +1,6 @@
 from autotune.space import Space, Integer, Real
 from autotune.problem import TuningProblem
-from GPTune.gptune import GPTune, BuildSurrogateModel_tl as BuildSurrogateModel
+from GPTune.gptune import GPTune, BuildSurrogateModel
 from GPTune.computer import Computer
 from GPTune.data import Categoricalnorm, Data
 from GPTune.database import HistoryDB, GetMachineConfiguration
@@ -371,8 +371,9 @@ def main():
     model_functions = {}
     for size, data in zip(prior_sizes, prior_traces):
         surrogate_metadata['task_parameter'] = [[size]]
-        model_functions[size] = BuildSurrogateModel(metadata_path=None,
-                                                    metadata=surrogate_metadata,
+        model_functions[size] = BuildSurrogateModel(problem_space=surrogate_metadata,
+                                                    modeler=surrogate_metadata['modeler'],
+                                                    input_task=surrogate_metadata['task_parameter'],
                                                     function_evaluations=data['func_eval'])
     wrapped_objectives = wrap_objective(objectives, model_functions)
     #func_evals = []
@@ -416,7 +417,7 @@ def main():
             NS1 = max(args.nrun//2,1)
         else:
             NS1 = args.ninit
-        data, modeler, stats = gt.MLA(Igiven=transfer_task, NS=args.nrun, NI=len(transfer_task),
+        data, modeler, stats = gt.MLA(Tgiven=transfer_task, NS=args.nrun, NI=len(transfer_task),
                                       NS1=NS1)
     else:
         # THIS is a patched implementation of GPTune's actual TLA api call that allows TLA to produce
