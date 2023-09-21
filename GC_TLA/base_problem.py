@@ -157,6 +157,17 @@ class BaseProblem(setWhenDefined):
         else:
             return float(results[0])
 
+    def log(self, point, objective_value, elapsed_time):
+        point['objective'] = objective_value
+        point['elapsed_sec'] = elapsed_time
+        frame = pd.DataFrame(data=[point], columns=list(point.keys()))
+        if os.path.exists(self.selflog):
+            logs = pd.read_csv(self.selflog)
+            logs = logs.append(frame, ignore_index=True)
+        else:
+            logs = frame
+        logs.to_csv(self.selflog, index=False)
+
     def objective(self, point: dict, *args, **kwargs):
         if point != {}:
             x = np.asarray_chkfinite([point[k] for k in self.params]) # ValueError if any NaN or Inf
@@ -187,15 +198,8 @@ class BaseProblem(setWhenDefined):
             else:
                 print(f"OUTPUT: {result} --> {final}")
         if self.selflog is not None:
-            point['objective'] = final
-            point['elapsed_sec'] = time_stop - self.time_start
-            frame = pd.DataFrame(data=[point], columns=list(point.keys()))
-            if os.path.exists(self.selflog):
-                logs = pd.read_csv(self.selflog)
-                logs = logs.append(frame, ignore_index=True)
-            else:
-                logs = frame
-            logs.to_csv(self.selflog, index=False)
+            elapsed = time_stop - self.time_start
+            self.log(point, final, elapsed)
         if self.returnmode == 'GPTune':
             return [final]
         elif self.returnmode == 'ytopt':
@@ -304,6 +308,23 @@ def libe_problem_builder(lookup, input_space_definition, there, default=None, na
             self.problem_params = dict((p.lower(), 'categorical') for p in self.input_space.get_hyperparameter_names())
             self.categorical_cast = dict((p.lower(), 'str') for p in self.input_space.get_hyperparameter_names())
             super().__init__(**kwargs)
+
+        def log(self, point, objective_value, elapsed_time):
+            # Match format made by libensemble logs
+            alter_point = dict((k,v) for (k,v) in point.items() if k not in ['machine_info',])
+            alter_point['FLOPS'] = objective_value
+            alter_point['elapsed_sec'] = elapsed_time
+            from_machine_info = dict((k,point['machine_info'][k]) for k in ['identifier','mpi_ranks','threads_per_node','ranks_per_node','gpu_enabled'])
+            alter_point.update(from_machine_info)
+            alter_point['libE_id'] = 0
+            alter_point['libE_workers'] = point['machine_info']['libE_workers']
+            frame = pd.DataFrame(data=[alter_point], columns=list(alter_point.keys()))
+            if os.path.exists(self.selflog):
+                logs = pd.read_csv(self.selflog)
+                logs = logs.append(frame, ignore_index=True)
+            else:
+                logs = frame
+            logs.to_csv(self.selflog, index=False)
     LibE_Problem.__name__ = name
     inv_lookup = dict((v, k) for (k,v) in lookup.items())
     if default is None:
