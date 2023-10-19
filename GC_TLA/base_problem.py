@@ -236,7 +236,9 @@ class BaseProblem(setWhenDefined):
                 continue
         self.input_space_size = prod
 
-def import_method_builder(clsref, lookup, default, oracles):
+# When all sizes are defined by a lookup dictionary, it can be provided to this call to produce
+# an appropriate getattr function
+def dictionary_import_method_builder(clsref, ldict, default, oracles):
     def getattr_fn(name, default=default, oracles=oracles):
         # Prevent some bugs where things that normal python getattr SHOULD be called
         if name.startswith("__"):
@@ -256,10 +258,10 @@ def import_method_builder(clsref, lookup, default, oracles):
             if name not in oracles.keys():
                 raise ValueError(f"Module defining '{clsref.__name__}' has no oracle for '{name}'")
             oracle = oracles[name]
-            class_size = lookup[name]
+            class_size = ldict[name]
             return clsref(class_size, oracle=oracle, use_oracle=True)
-        elif name in lookup.keys():
-            class_size = lookup[name]
+        elif name in ldict.keys():
+            class_size = ldict[name]
             return clsref(class_size)
         elif name == "":
             return clsref(default)
@@ -267,16 +269,44 @@ def import_method_builder(clsref, lookup, default, oracles):
             raise ValueError(f"Module defining '{clsref.__name__}' has no attribute '{name}'")
     return getattr_fn
 
+# When all sizes are defined by a function, it can be provided to this call to produce an appropriate
+# getattr function
+# Does not support oracles at this time
+def functional_import_method_builder(clsref, lfunc, default):
+    def getattr_fn(name, default=default):
+        # Prevent some bugs where things that normal python getattr SHOULD be called
+        if name.startswith("__"):
+            return
+        if name == "input_space" or name == "space":
+            return clsref.input_space
+        prefixes = ["_", "class"]
+        suffixes = ["Problem"]
+        for pre in prefixes:
+            if name.startswith(pre):
+                name = name[len(pre):]
+        for suf in suffixes:
+            if name.endswith(suf):
+                name = name[:-len(suf)]
+        if name.lower().startswith("oracle"):
+            raise ValueError(f"Module defining '{clsref.__name__}' does not support oracles")
+        elif name == "":
+            return clsref(default)
+        else:
+            class_size = lfunc(name)
+            return clsref(class_size)
+    return getattr_fn
+
 # NEW PROBLEM BUILDER
-def libe_problem_builder(lookup, input_space_definition, there, default=None, name="LibE_Problem", plopper_class=LibE_Plopper, oracles=dict(), **original_kwargs):
+def libe_problem_builder(lookup, inv_lookup, input_space_definition, there, default=None, name="LibE_Problem", plopper_class=LibE_Plopper, oracles=dict(), **original_kwargs):
     class LibE_Problem(BaseProblem):
         input_space = input_space_definition
         parameter_space = None
         # THIS MAY CHANGE
         output_space = Space([Real(0.0, inf, name='time')])
+        # For now this corresponds to #nodes
         constraints = [ScalarRange(column_name='input',
-                                   low_value=min([_[1] for _ in lookup.keys()]),
-                                   high_value=max([_[1] for _ in lookup.keys()]),
+                                   low_value=1,
+                                   high_value=128,
                                    strict_boundaries=False)]
         dataset_lookup = lookup
         def __init__(self, class_size, **kwargs):
@@ -326,10 +356,9 @@ def libe_problem_builder(lookup, input_space_definition, there, default=None, na
                 logs = frame
             logs.to_csv(self.selflog, index=False)
     LibE_Problem.__name__ = name
-    inv_lookup = dict((v, k) for (k,v) in lookup.items())
     if default is None:
-        default = inv_lookup['S_2']
-    return import_method_builder(LibE_Problem, inv_lookup, default, oracles)
+        default = inv_lookup(None, default=True)
+    return functional_import_method_builder(LibE_Problem, inv_lookup, default)
 
 def dummy_problem_builder(lookup, input_space_definition, there, default=None, name="Dummy_Problem", plopper_class=Dummy_Plopper, oracles=dict(), **original_kwargs):
     if type(input_space_definition) is not CS.ConfigurationSpace:
@@ -363,7 +392,7 @@ def dummy_problem_builder(lookup, input_space_definition, there, default=None, n
     inv_lookup = dict((v[0], k) for (k,v) in lookup.items())
     if default is None:
         default = inv_lookup['S']
-    return import_method_builder(Dummy_Problem, inv_lookup, default, oracles)
+    return dictionary_import_method_builder(Dummy_Problem, inv_lookup, default, oracles)
 
 def ecp_problem_builder(lookup, input_space_definition, there, default=None, name="ECP_Problem", plopper_class=ECP_Plopper, oracles=dict(), **original_kwargs):
     if type(input_space_definition) is not CS.ConfigurationSpace:
@@ -408,7 +437,7 @@ def ecp_problem_builder(lookup, input_space_definition, there, default=None, nam
     inv_lookup = dict((v[0], k) for (k,v) in lookup.items())
     if default is None:
         default = inv_lookup['S']
-    return import_method_builder(ECP_Problem, inv_lookup, default, oracles)
+    return dictionary_import_method_builder(ECP_Problem, inv_lookup, default, oracles)
 
 def polybench_problem_builder(lookup, input_space_definition, there, default=None, name="Polybench_Problem", plopper_class=Polybench_Plopper, oracles=dict(), **original_kwargs):
     if type(input_space_definition) is not CS.ConfigurationSpace:
@@ -446,5 +475,5 @@ def polybench_problem_builder(lookup, input_space_definition, there, default=Non
     inv_lookup = dict((v[0], k) for (k,v) in lookup.items())
     if default is None:
         default = inv_lookup['S']
-    return import_method_builder(Polybench_Problem, inv_lookup, default, oracles)
+    return dictionary_import_method_builder(Polybench_Problem, inv_lookup, default, oracles)
 
