@@ -100,7 +100,7 @@ class BaseProblem(setWhenDefined):
         if 'runtime' not in self.problem_params.keys():
             self.problem_params['runtime'] = 'float'
         self.params = list([k for k in self.problem_params.keys() if k not in added_keys])
-        self.CAPITAL_PARAMS = [_.capitalize() for _ in self.params]
+        self.CAPITAL_PARAMS = [_.upper() for _ in self.params]
         self.n_params = len(self.params)
         if oracle is not None:
             self.initialize_oracle()

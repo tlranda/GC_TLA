@@ -328,7 +328,7 @@ class LibE_Plopper(Plopper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.findReplace is None:
-            self.findReplace = findReplaceRegex([r"#(P[0-9]+)", r"#(C[0-9]+)"], prefix=[tuple(["#",""])]*2)
+            self.findReplace = findReplaceRegex([r"#([CP][0-9]+[XYZ]*)"], prefix=[tuple(["#",""])])
 
     def set_architecture_info(self, **kwargs):
         # Architecture information
