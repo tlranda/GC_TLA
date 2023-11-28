@@ -26,6 +26,7 @@ def persistent_model(H, persis_info, gen_specs, libE_info):
     first_write = True
     fields = [i[0] for i in gen_specs['out']]
     samples = []
+    sample_generation_identifier = 0
     param_history = []
 
     # Send batches until the manager sends stop tag
@@ -39,6 +40,9 @@ def persistent_model(H, persis_info, gen_specs, libE_info):
                 samples = model.sample_from_conditions(user_specs['conditions'])
                 if remove_duplicates is not None:
                     samples, param_history = remove_duplicates(samples, param_history, gen_specs['out'])
+                # Leave an artifact of the sampling process
+                samples.to_csv(f"GaussianCopula_samples_{sample_generation_identifier}.csv", index=False)
+                sample_generation_identifier += 1
             # Use available samples
             utilized = []
             for idx in samples.index[:n_sim]:
