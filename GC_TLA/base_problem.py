@@ -238,7 +238,7 @@ class BaseProblem(setWhenDefined):
 
 # When all sizes are defined by a lookup dictionary, it can be provided to this call to produce
 # an appropriate getattr function
-def dictionary_import_method_builder(clsref, ldict, default, oracles):
+def dictionary_import_method_builder(clsref, ldict, default, oracles=None):
     def getattr_fn(name, default=default, oracles=oracles):
         # Prevent some bugs where things that normal python getattr SHOULD be called
         if name.startswith("__"):
@@ -255,7 +255,7 @@ def dictionary_import_method_builder(clsref, ldict, default, oracles):
                 name = name[:-len(suf)]
         if name.lower().startswith("oracle"):
             name = name[6:].lstrip('_')
-            if name not in oracles.keys():
+            if oracles is None or name not in oracles.keys():
                 raise ValueError(f"Module defining '{clsref.__name__}' has no oracle for '{name}'")
             oracle = oracles[name]
             class_size = ldict[name]
@@ -272,7 +272,16 @@ def dictionary_import_method_builder(clsref, ldict, default, oracles):
 # When all sizes are defined by a function, it can be provided to this call to produce an appropriate
 # getattr function
 # Does not support oracles at this time
-def functional_import_method_builder(clsref, lfunc, default):
+def functional_import_method_builder(clsref, lfunc, default, list_of_lists=None, lookup=None):
+    if list_of_lists is not None and lookup is not None:
+        # Can use function to make a concrete list instead of using the function
+        ldict = {}
+        import itertools
+        for prod in itertools.product(*list_of_lists):
+            ldict[lookup(*prod)] = prod
+        # Adjust dataset lookup but it's supposed to be backwards
+        clsref.dataset_lookup = dict((v,k) for (k,v) in ldict.items())
+        return dictionary_import_method_builder(clsref, ldict, default, oracles=None)
     def getattr_fn(name, default=default):
         # Prevent some bugs where things that normal python getattr SHOULD be called
         if name.startswith("__"):
@@ -297,7 +306,7 @@ def functional_import_method_builder(clsref, lfunc, default):
     return getattr_fn
 
 # NEW PROBLEM BUILDER
-def libe_problem_builder(lookup, inv_lookup, input_space_definition, there, default=None, name="LibE_Problem", plopper_class=LibE_Plopper, oracles=dict(), **original_kwargs):
+def libe_problem_builder(lookup, inv_lookup, input_space_definition, there, default=None, name="LibE_Problem", plopper_class=LibE_Plopper, oracles=dict(), lol=None, **original_kwargs):
     class LibE_Problem(BaseProblem):
         input_space = input_space_definition
         parameter_space = None
@@ -358,7 +367,7 @@ def libe_problem_builder(lookup, inv_lookup, input_space_definition, there, defa
     LibE_Problem.__name__ = name
     if default is None:
         default = inv_lookup(None, default=True)
-    return functional_import_method_builder(LibE_Problem, inv_lookup, default)
+    return functional_import_method_builder(LibE_Problem, inv_lookup, default, list_of_lists=lol, lookup=lookup)
 
 def dummy_problem_builder(lookup, input_space_definition, there, default=None, name="Dummy_Problem", plopper_class=Dummy_Plopper, oracles=dict(), **original_kwargs):
     if type(input_space_definition) is not CS.ConfigurationSpace:
