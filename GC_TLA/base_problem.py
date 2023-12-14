@@ -359,8 +359,7 @@ def libe_problem_builder(lookup, inv_lookup, input_space_definition, there, defa
             alter_point['libE_workers'] = point['machine_info']['libE_workers']
             frame = pd.DataFrame(data=[alter_point], columns=list(alter_point.keys()))
             if os.path.exists(self.selflog):
-                logs = pd.read_csv(self.selflog)
-                logs = logs.append(frame, ignore_index=True)
+                logs = pd.concat((pd.read_csv(self.selflog), frame)).reset_index(drop=True)
             else:
                 logs = frame
             logs.to_csv(self.selflog, index=False)
