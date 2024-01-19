@@ -555,6 +555,7 @@ class Polybench_Plopper(Plopper):
         else:
             return [float(s) for s in out.decode('utf-8').split('\n')[-4:-1]]
 
+
 class Dummy_Plopper(Plopper):
     def __init__(self, *args, dummy_low=0, dummy_high=1, **kwargs):
         self.outputdir=""

@@ -10,7 +10,7 @@ from ConfigSpace import EqualsCondition
 from sdv.constraints import ScalarRange
 import inspect
 import time
-import os
+import os, pathlib
 # NEW PLOPPER
 from GC_TLA.base_plopper import ECP_Plopper, Polybench_Plopper, LibE_Plopper, Dummy_Plopper
 
@@ -114,7 +114,7 @@ class BaseProblem(setWhenDefined):
         return "\n".join(s)
 
     def initialize_oracle(self):
-        if type(self.oracle) is str:
+        if type(self.oracle) is str or isinstance(self.oracle, pathlib.Path):
             self.oracle = pd.read_csv(self.oracle)
         self.oracle = self.oracle.sort_values(by='objective')
 
@@ -123,7 +123,7 @@ class BaseProblem(setWhenDefined):
         n_matching_columns = (self.oracle[self.params].astype(str) == search).sum(1)
         full_match_idx = np.where(n_matching_columns == self.n_params)[0]
         if len(full_match_idx) == 0:
-            raise ValueError(f"Failed to find tuple {list(search_equals)} in oracle data")
+            raise ValueError(f"Failed to find tuple {list(search)} in oracle data")
         objective = self.oracle.iloc[full_match_idx]['objective'].values[0]
         #print(f"All file rank: {full_match_idx[0]} / {len(self.oracle)}")
         return objective
@@ -245,6 +245,8 @@ def dictionary_import_method_builder(clsref, ldict, default, oracles=None):
             return
         if name == "input_space" or name == "space":
             return clsref.input_space
+        if name == "lookup":
+            return ldict
         prefixes = ["_", "class"]
         suffixes = ["Problem"]
         for pre in prefixes:
@@ -446,6 +448,39 @@ def ecp_problem_builder(lookup, input_space_definition, there, default=None, nam
     if default is None:
         default = inv_lookup['S']
     return dictionary_import_method_builder(ECP_Problem, inv_lookup, default, oracles)
+
+def embedding_problem_builder(lookup, input_space_definition, there, default=None, name="Embedding_Problem", oracles=dict(), **original_kwargs):
+    if type(input_space_definition) is not CS.ConfigurationSpace:
+        input_space_definition = BaseProblem.configure_space(input_space_definition)
+    class Embedding_Problem(BaseProblem):
+        input_space = input_space_definition
+        parameter_space = None
+        output_space = Space([Real(0.0, inf, name='time')])
+        # Got to remember what this was actually doing -- it's not a categorical space I think
+        problem_params = dict((p.lower(), 'real') for p in input_space_definition.get_hyperparameter_names())
+        categorical_cast = dict((p.lower(), 'str') for p in input_space_definition.get_hyperparameter_names())
+        constraints = [ScalarRange(column_name='input', low_value=min(lookup.keys()), high_value=max(lookup.keys()), strict_boundaries=False)]
+        dataset_lookup = lookup
+        use_oracle = True
+        def __init__(self, class_size, **kwargs):
+            # Allow anything to be overridden by passing it in as top priority
+            for k, v in original_kwargs.items():
+                kwargs.setdefault(k,v)
+            expect_kwargs = {'use_capital_params': True,
+                             'problem_class': class_size,
+                             'dataset': f" -D{self.dataset_lookup[class_size][1]}_DATASET",
+                             'plopper': None,
+                            }
+            for k,v in expect_kwargs.items():
+                kwargs.setdefault(k,v)
+            super().__init__(**kwargs)
+        def objective(self, point, *args, **kwargs):
+            return super().objective(point, self.dataset, *args, **kwargs)
+    Embedding_Problem.__name__ = name
+    inv_lookup = dict((v[0],k) for (k,v) in lookup.items())
+    if default is None:
+        default = inv_lookup['S']
+    return dictionary_import_method_builder(Embedding_Problem, inv_lookup, default, oracles)
 
 def polybench_problem_builder(lookup, input_space_definition, there, default=None, name="Polybench_Problem", plopper_class=Polybench_Plopper, oracles=dict(), **original_kwargs):
     if type(input_space_definition) is not CS.ConfigurationSpace:

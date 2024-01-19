@@ -38,6 +38,6 @@ input_space = [('Categorical',
 lookup_ival = {20: ("N", "MINI"), 60: ("S", "SMALL"), 130: ("SM", "SM"), 200: ("M", "MEDIUM"),
                600: ("ML", "ML"), 1000: ("L", "LARGE"), 2000: ("XL", "EXTRALARGE"),
                3000: ("H", "HUGE"),}
-oracles = {"SM": f"{HERE}/data/gc_explain/all_SM.csv", "XL": f"{HERE}/data/gc_explain/all_XL.csv",}
+oracles = {"SM": f"{HERE}/Data/oracle/all_SM.csv", "XL": f"{HERE}/Data/oracle/all_XL.csv",}
 __getattr__ = polybench_problem_builder(lookup_ival, input_space, HERE, name="Syr2k_Problem", oracles=oracles)
 
