@@ -49,7 +49,7 @@ def build():
     files.add_argument("--input-data", nargs="+", required=True,
                             help="Data to concatenate together for model training")
     files.add_argument("--input-attr", nargs="+", required=True,
-                            help="Scale indentifiers for each input data")
+                            help="Scale indentifiers for each input data (even if pre-identified in data, just make one up)")
     files.add_argument("--problem-file", required=True,
                             help="Path to file that defines importable objects to represent the tuning space and plopping semantics")
     files.add_argument("--transfer-scale", required=True,
@@ -96,11 +96,19 @@ def import_hook_from_file(fname, attr):
 def load_and_filter_input(names, attrs, args):
     concat = []
     for name, attr in zip(names, attrs):
-        # Load problem attribute
-        problem = import_hook_from_file(args.problem_file, attr)
         load = pd.read_csv(name)
         # Inject scale indiator
-        load['scale'] = pd.Series(int(problem.problem_class) for _ in range(len(load.index)))
+        indicators = np.asarray(['scale','input','size'])
+        indicator = [_ in load.columns for _ in indicators]
+        if not any(indicator):
+            # Load problem attribute
+            problem = import_hook_from_file(args.problem_file, attr)
+            load['scale'] = pd.Series(int(problem.problem_class) for _ in range(len(load.index)))
+        else:
+            # Possibly just rename the data
+            if not indicator[0]:
+                from_name = indicators[np.where(indicator)[0]][0]
+                load = load.rename(columns={from_name: 'scale'})
         # Filter
         if args.filter_inverted:
             qs = np.quantile(load['objective'].values, 1-args.top)
@@ -120,7 +128,6 @@ def load_and_filter_input(names, attrs, args):
 
 def main(args=None):
     args = parse(args)
-
     # Load inputs
     training_data = load_and_filter_input(args.input_data, args.input_attr, args)
     # Load model evaluator in oracle mode
@@ -149,6 +156,7 @@ def main(args=None):
         suggested_budget = args.max_evals
     else:
         budget_conditions = [Condition({'scale': evaluator.problem_class}, num_rows=initial_population)]
+        print(f"Determining auto-budget...")
         massive_sample = model.sample_from_conditions(budget_conditions)
         sampled_pop_size = len(massive_sample.drop_duplicates())
         ideal = int(initial_population * args.budget_ideal)
