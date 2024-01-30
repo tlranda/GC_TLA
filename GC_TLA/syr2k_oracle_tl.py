@@ -58,6 +58,8 @@ def build():
                             help="Scale identifier to predict against")
     files.add_argument("--output", default="oracle_gc.csv",
                             help="Path to save results to (if --sample-seed is provided, filename will automatically be noted with each seed value) (default %(default)s)")
+    files.add_argument("--log-training-dataset", default=None,
+                            help="Path to save filtered dataset to when provided (default %(default)s)")
     budget = parser.add_argument_group("Budget Estimation")
     budget.add_argument("--skip-auto-budget", action="store_true",
                             help="Always use --max-evals as budet, do not attempt to derive an experiment budget (default: %(default)s)")
@@ -123,6 +125,8 @@ def load_and_filter_input(names, attrs, args):
         filtered = filtered.drop(columns=['elapsed_sec', 'objective'])
         concat.append(filtered)
     combined = pd.concat(concat).reset_index(drop=True)
+    if args.log_training_dataset is not None:
+        combined.to_csv(args.log_training_dataset, index=False)
     # For syr2k and SDV to get along, we need this to be string-typed except the constraint column
     for col in combined.columns:
         if col == 'scale':
