@@ -118,12 +118,14 @@ class BaseProblem(setWhenDefined):
             self.oracle = pd.read_csv(self.oracle)
         self.oracle = self.oracle.sort_values(by='objective')
 
-    def oracle_search(self, parameterization):
+    def oracle_search(self, parameterization, *args, as_rank=False, **kwargs):
         search = tuple(parameterization)
         n_matching_columns = (self.oracle[self.params].astype(str) == search).sum(1)
         full_match_idx = np.where(n_matching_columns == self.n_params)[0]
         if len(full_match_idx) == 0:
             raise ValueError(f"Failed to find tuple {list(search)} in oracle data")
+        if as_rank:
+            return full_match_idx[0]
         objective = self.oracle.iloc[full_match_idx]['objective'].values[0]
         #print(f"All file rank: {full_match_idx[0]} / {len(self.oracle)}")
         return objective
@@ -182,7 +184,7 @@ class BaseProblem(setWhenDefined):
         if not self.silent:
             print(f"CONFIG: {point}")
         if self.use_oracle and self.oracle is not None:
-            result = self.oracle_search(x)
+            result = self.oracle_search(x, *args, **kwargs)
         elif self.use_capital_params is not None and self.use_capital_params:
             result = self.plopper.findRuntime(x, self.CAPITAL_PARAMS, *args, **kwargs)
         else:
@@ -474,8 +476,7 @@ def embedding_problem_builder(lookup, input_space_definition, there, default=Non
             for k,v in expect_kwargs.items():
                 kwargs.setdefault(k,v)
             super().__init__(**kwargs)
-        def objective(self, point, *args, **kwargs):
-            return super().objective(point, self.dataset, *args, **kwargs)
+
     Embedding_Problem.__name__ = name
     inv_lookup = dict((v[0],k) for (k,v) in lookup.items())
     if default is None:
