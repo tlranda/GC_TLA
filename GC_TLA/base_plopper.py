@@ -1,4 +1,5 @@
-import os, uuid, re, time, subprocess, numpy as np, warnings, stat, signal, math
+import os, uuid, re, time, subprocess, warnings, stat, signal, math, pathlib, pickle, atexit, itertools
+import numpy as np
 
 """
     Expected usage:
@@ -121,10 +122,11 @@ class Plopper:
 
         if outputdir is None:
             # Use CWD as basis
-            outputdir = os.path.abspath(".")
-        self.outputdir = outputdir+"/tmp_files" # Where temporary files will be generated
-        if not os.path.exists(self.outputdir):
-            os.makedirs(self.outputdir)
+            outputdir = pathlib.Path(os.path.abspath("."))
+        elif type(outputdir) is str:
+            outputdir = pathlib.Path(outputdir)
+        self.outputdir = outputdir.joinpath("tmp_files") # Where temporary files will be generated
+        self.outputdir.mkdir(exist_ok=True)
 
         self.output_extension = output_extension # In case compilers are VERY picky about the extension on your intermediate files
         self.evaluation_tries = evaluation_tries # Number of executions to average amongst
@@ -286,7 +288,7 @@ class Plopper:
     def findRuntime(self, x, params, *args, **kwargs):
         # Generate non-colliding name to write outputs to:
         if len(x) > 0:
-            interimfile = self.outputdir+"/"+str(uuid.uuid4())+self.output_extension
+            interimfile = self.outputdir.joinpath(str(uuid.uuid4())+self.output_extension)
         else:
             interimfile = self.sourcefile
 
@@ -391,13 +393,17 @@ class LibE_Plopper(Plopper):
         return dictVal
 
     def runString(self, outfile, attempt, dictVal, *args, **kwargs):
-        j = math.ceil(self.ranks_per_node * int(dictVal['P9']) / 64)
         required_sysinfo = ['mpi_ranks', 'ranks_per_node']
         assert all([hasattr(self,attr) for attr in required_sysinfo]), \
                "Insufficient architecture information to form runString -- " +\
                "specify or auto-determine properties via problem.set_architecture_info()"
-        cmd = self.cmd_template.format(mpi_ranks=self.mpi_ranks, ranks_per_node=self.ranks_per_node,
+        if 'P9' in dictVal.keys():
+            j = math.ceil(self.ranks_per_node * int(dictVal['P9']) / 64)
+            cmd = self.cmd_template.format(mpi_ranks=self.mpi_ranks, ranks_per_node=self.ranks_per_node,
                                        depth=int(dictVal['P9']), j=j, interimfile=outfile)
+        else:
+            cmd = self.cmd_template.format(mpi_ranks=self.mpi_ranks, ranks_per_node=self.ranks_per_node,
+                                        interimfile=outfile)
         return cmd
 
     def execute(self, outfile, dictVal, *args, **kwargs):
@@ -511,15 +517,23 @@ class ECP_Plopper(Plopper):
 
     def compileString(self, outfile, dictVal, *args, **kwargs):
         # Drop extension in the output file name to prevent clobber
+        if type(outfile) is pathlib.Path:
+            no_ext = outfile.with_suffix('')
+        else:
+            no_ext = outfile[:-len(self.output_extension)]
         clang_cmd = f"clang {outfile} {self.kernel_dir}/material.c {self.kernel_dir}/utils.c -I{self.kernel_dir} "+\
                     "-fopenmp -DOPENMP -fno-unroll-loops -O3 -mllvm -polly -mllvm "+\
                     "-polly-process-unprofitable -mllvm -polly-use-llvm-names -ffast-math -lm "+\
-                    f"-march=native -o {outfile[:-len(self.output_extension)]} "+\
+                    f"-march=native -o {no_ext} "+\
                     "-I/lcrc/project/EE-ECP/jkoo/sw/clang13.2/llvm-project/release_pragma-clang-loop/projects/openmp/runtime/src"
         return clang_cmd
 
     def runString(self, outfile, attempt, dictVal, *args, **kwargs):
-        return "srun -n1 "+outfile[:-len(self.output_extension)]+" ".join([str(_) for _ in args])
+        if type(outfile) is pathlib.Path:
+            no_ext = outfile.with_suffix('')
+        else:
+            no_ext = outfile[:-len(self.output_extension)]
+        return f"srun -n1 {no_ext} "+" ".join([str(_) for _ in args])
 
     def getTime(self, process, out, errs, outfile, attempt, dictVal, *arg, **kwargs):
         # Return last 3 floating point values from output by line
@@ -539,14 +553,22 @@ class Polybench_Plopper(Plopper):
     def compileString(self, outfile, dictVal, *args, **kwargs):
         d_size = args[0]
         # Drop extension in the output file name to prevent clobber
+        if type(outfile) is pathlib.Path:
+            no_ext = outfile.with_suffix('')
+        else:
+            no_ext = outfile[:-len(self.output_extension)]
         clang_cmd = f"clang {outfile} {self.kernel_dir}/polybench.c -I{self.kernel_dir} {d_size} "+\
                     "-DPOLYBENCH_TIME -std=c99 -fno-unroll-loops -O3 -mllvm -polly -mllvm "+\
                     "-polly-process-unprofitable -mllvm -polly-use-llvm-names -ffast-math "+\
-                    f"-march=native -o {outfile[:-len(self.output_extension)]}"
+                    f"-march=native -o {no_ext}"
         return clang_cmd
 
     def runString(self, outfile, attempt, dictVal, *args, **kwargs):
-        return "srun -n1 "+outfile[:-len(self.output_extension)]
+        if type(outfile) is pathlib.Path:
+            no_ext = outfile.with_suffix('')
+        else:
+            no_ext = outfile[:-len(self.output_extension)]
+        return f"srun -n1 {no_ext}"
 
     def getTime(self, process, out, errs, outfile, attempt, dictVal, *arg, **kwargs):
         # Return last 3 floating point values from output by line
@@ -558,7 +580,7 @@ class Polybench_Plopper(Plopper):
 
 class Dummy_Plopper(Plopper):
     def __init__(self, *args, dummy_low=0, dummy_high=1, **kwargs):
-        self.outputdir=""
+        self.outputdir=pathlib.Path(".")
         self.output_extension=""
         self.sourcefile=""
         self.force_plot=False
@@ -575,92 +597,71 @@ class Dummy_Plopper(Plopper):
     def runString(self, outfile, attempt, dictVal, *args, **kwargs):
         return "echo"
 
+class LazyPlopper(Plopper):
+    def __init__(self, *args, cachefile=None, randomizeCacheName=False, lazySaveInterval=5, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make cache
+        if cachefile is None:
+            cachefile = "lazyPlopper"
+        if randomizeCacheName:
+            cachefile = str(cachefile)+str(uuid.uuid4())
+        self.cachefile = pathlib.Path(str(cachefile)).with_suffix('.lazyPlopperCache')
+        # Load cache
+        if self.cachefile.exists():
+            self.load()
+            self.lastSaved = dict((k,v) for (k,v) in self.cache.items())
+        else:
+            self.cache = dict()
+            self.lastSaved = dict()
+        self.lazySaveInterval = lazySaveInterval
+        atexit.register(self.__del__) # Ensure Python < 3.10 saves before deleting the open() method
 
-def __getattr__(name):
-    if name == 'Plopper':
-        return Plopper
-    elif name == 'ECP_Plopper':
-        return ECP_Plopper
-    elif name == 'Polybench_Plopper':
-        return Polybench_Plopper
-    elif name == 'Dummy_Plopper':
-        return Dummy_Plopper
-    elif name == 'findReplaceRegex':
-        return findReplaceRegex
-    elif name == 'LazyPlopper':
-        import torch # Currently used for serialization
-        import atexit # Python < 3.10 bugfix for LazyPloppers
-        import itertools # Chain fix for LazyPloppers
-        class LazyPlopper(Plopper):
-            def __init__(self, *args, cachefile=None, randomizeCacheName=False, lazySaveInterval=5, **kwargs):
-                super().__init__(*args, **kwargs)
-                # Make cache available
-                if cachefile is None:
-                    cachefile = "lazyplopper_cache"
-                    if randomizeCacheName:
-                        cachefile += "_"+str(uuid.uuid4())
-                    cachefile += ".cache"
-                self.cachefile = cachefile
-                # Load cache
-                if os.path.exists(self.cachefile):
-                    self.load()
-                    self.lastSaved = dict((k,v) for (k,v) in self.cache.items())
-                else:
-                    self.cache = dict()
-                    self.lastSaved = dict()
-                # Define a checkpoint interval to save new information at prior to object deletion
-                self.lazySaveInterval = lazySaveInterval
-                # Bug fix for Python < 3.10: Make sure there is a save before python deletes the open() method
-                atexit.register(self.__del__)
+    @property
+    def nSaved(self):
+        return len(self.lastSaved.keys())
 
-            @property
-            def nSaved(self):
-                return len(self.lastSaved.keys())
+    @property
+    def nCached(self):
+        return len(self.cache.keys())
 
-            @property
-            def nCached(self):
-                return len(self.cache.keys())
+    def __str__(self):
+        return super().__str__()+"\n"+str({'cachefile': self.cachefile,
+                                           'saved': self.nSaved,
+                                           'cached': self.nCached,
+                                           'lazySaveInterval': self.lazySaveInterval})
 
-            def __str__(self):
-                return super().__str__()+"\n"+str({'cachefile': self.cachefile,
-                                                   'saved': self.nSaved,
-                                                   'cached': self.nCached,
-                                                   'lazySaveInterval': self.lazySaveInterval})
+    def __del__(self):
+        # Prevent redundant saves
+        if self.nSaved != self.nCached:
+            self.save()
 
-            def __del__(self):
-                # Prevent redundant saves
-                if self.nSaved != self.nCached:
-                    self.save()
+    def load(self):
+        self.cache = pickle.load(self.cachefile)
 
-            # Currently implemented using Pytorch serialization. Override these functions to use something else
-            def load(self):
-                self.cache = torch.load(self.cachefile)
+    def save(self):
+        try:
+            pickle.save(self.cache, self.cachefile)
+        except NameError:
+            missing_entries = self.nCached - self.nSaved
+            if missing_entries == 1:
+                print(f"!WARNING: FAILED to save final cache entry (garbage collection misordering likely)")
+            elif missing_entries > 1:
+                print(f"!WARNING: FAILED to save final {missing_entries} cache entries (garbage collection misordering likely)")
+        else:
+            self.lastSaved = dict((k,v) for (k,v) in self.cache.items())
 
-            def save(self):
-                try:
-                    torch.save(self.cache, self.cachefile)
-                except NameError:
-                    missing_entries = self.nCached - self.nSaved
-                    if missing_entries == 1:
-                        print(f"!WARNING: FAILED to save final cache entry (garbage collection misordering likely)")
-                    elif missing_entries > 1:
-                        print(f"!WARNING: FAILED to save final {missing_entries} cache entries (garbage collection misordering likely)")
-                else:
-                    self.lastSaved = dict((k,v) for (k,v) in self.cache.items())
-
-            def findRuntime(self, x, params, *args, **kwargs):
-                searchtup = tuple(list(itertools.chain.from_iterable([xx,pp] for (xx,pp) in zip(x, params)))+
-                                  list(args)+
-                                  list(kwargs.values()))
-                # Lazy evaluation doesn't call findRuntime() when it has seen the runtime before
-                if searchtup in self.cache.keys():
-                    return self.cache[searchtup]
-                else:
-                    rval = super().findRuntime(x, params, *args, **kwargs)
-                    self.cache[searchtup] = rval
-                    # Checkpoint new save values every interval to avoid catastrophic loss
-                    if self.nCached - self.nSaved >= self.lazySaveInterval:
-                        self.save()
-                    return rval
-        return LazyPlopper
+    def findRuntime(self, x, params, *args, **kwargs):
+        searchtup = tuple(list(itertools.chain.from_iterable([xx,pp] for (xx,pp) in zip(x, params)))+
+                          list(args)+
+                          list(kwargs.values()))
+        # Lazy evaluation doesn't call findRuntime() when it has seen the runtime before
+        if searchtup in self.cache.keys():
+            return self.cache[searchtup]
+        else:
+            rval = super().findRuntime(x, params, *args, **kwargs)
+            self.cache[searchtup] = rval
+            # Checkpoint new save values every interval to avoid catastrophic loss
+            if self.nCached - self.nSaved >= self.lazySaveInterval:
+                self.save()
+            return rval
 
