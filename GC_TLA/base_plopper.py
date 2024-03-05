@@ -404,6 +404,11 @@ class LibE_Plopper(Plopper):
         else:
             cmd = self.cmd_template.format(mpi_ranks=self.mpi_ranks, ranks_per_node=self.ranks_per_node,
                                         interimfile=outfile)
+        # Possibly restrict this execution to a hostfile
+        if 'machine_info' in kwargs and 'nodelist' in kwargs['machine_info']:
+            print(kwargs)
+            # Unsure if this is right, we need a sub-partition of it
+            cmd += " -hostfile {kwargs['machine_info']['nodelist']}"
         return cmd
 
     def execute(self, outfile, dictVal, *args, **kwargs):
