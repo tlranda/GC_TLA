@@ -17,6 +17,7 @@ class MetricIDs(enum.Enum):
     TimeOut = enum.auto() # Metric unavailable due to timeout
     BadReturnCode = enum.auto() # Metric unavailable due to bad return code
     BadParse = enum.auto() # Metric unavailable due to failure in metric parsing
+    UnableToExecute = enum.auto() # Metric unavailable due to failure PRIOR to execution (compilation error, etc)
 
     @classmethod
     def validate_infinity_mapping(cls, metric_dict):
@@ -70,13 +71,26 @@ class Executor():
                 except (ValueError, TypeError):
                     return None
 
-    def metric(self, timing_list):
+    def produceMetric(self, timing_list):
         # Allows for different interpretations of repeated events
         # Defaults to best-case scenario
         return min(timing_list)
 
+    def unable_to_execute(self):
+        """
+            Helper function to build appropriate metric value when .execute() cannot be called
+        """
+        if MetricIDs.UnableToExecute in self.infinity.keys():
+            unable_metric = [self.infinity[MetricIDs.UnableToExecute]]
+        else:
+            unable_metric = [self.infinity[MetricIDs.NotOK]]
+        return self.produceMetric(unable_metric * self.evaluation_tries)
+
     def set_os_environ(self, attempt):
-        # Return a mapping of environment variables for each trial's process
+        """
+            Return a mapping of environment variables for each trial's process
+            Attempt = None if this is a template command, else # of execution trial
+        """
         return None
 
     def cleanup(self, outfile, attempt):
@@ -194,5 +208,5 @@ class Executor():
         # Unable to evaluate this execution
         if failures > self.retries:
             print(f"OVERALL FAILED: {run_str}")
-        return self.metric(metrics)
+        return self.produceMetric(metrics)
 
