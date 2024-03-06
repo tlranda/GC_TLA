@@ -25,7 +25,8 @@ class MetricIDs(enum.Enum):
             return True
         # Else you have to implement all other NotOK enumerations
         all_keys = list(cls.__members__.keys())
-        other_notOK = all_keys[all_keys.index(cls.NotOK.name)+1:]
+        all_values = list(cls.__members__.values())
+        other_notOK = all_values[all_keys.index(cls.NotOK.name)+1:]
         for name in other_notOK:
             if name not in metric_dict.keys():
                 return False
@@ -49,22 +50,25 @@ class Executor():
         self.timeout = timeout
         self.strict_cleanup = strict_cleanup
 
-    def getMetric(self, process, out, errs, outfile, attempt, dictVal, *args, **kwargs):
-        # Define how to recover self-attributed objective values from the subprocess object
-        # Return None to default to the python-based time library's timing of the event
-        try:
-            if out is None:
-                return float(process.stdout.decode('utf-8'))
+    def getMetric(self, logfile, outfile, attempt, dictVal, *args, aggregator_fn=None, **kwargs):
+        """
+            Very simple parsing expects metric to be a numeric value (or newline-delimited series of values to interpret via aggregator_fn)
+        """
+        if logfile is None:
+            return None
+        with open(logfile, 'r') as f:
+            data = [_.rstrip() for _ in f.readlines()]
+            if len(data) == 1:
+                try:
+                    return float(data[0])
+                except ValueError:
+                    return None
             else:
-                return float(out.decode('utf-8'))
-        except ValueError:
-            try:
-                if errs is None:
-                    return float(process.stderr.decode('utf-8'))
-                else:
-                    return float(errs.decode('utf-8'))
-            except ValueError:
-                return None
+                try:
+                    total = [float(x) for x in data]
+                    return aggregator_fn(total)
+                except (ValueError, TypeError):
+                    return None
 
     def metric(self, timing_list):
         # Allows for different interpretations of repeated events
@@ -105,7 +109,7 @@ class Executor():
                     execution_status = subprocess.Popen(run_str, shell=True, stdout=logs, stderr=logs, env=env)
                     #child_pid = execution_status.pid
                     try:
-                        out, errs = execution_status.communicate(timeout=self.timeout)
+                        execution_status.communicate(timeout=self.timeout)
                         logged = True
                     except subprocess.TimeoutExpired:
                         try:
@@ -129,7 +133,7 @@ class Executor():
                     if hasattr(e, attr):
                         BadCleanup += f" -- {attr}:{geattr(e,attr)}"
                 warnings.warn(BadCleanup)
-            if logged not self.ignore_runtime_failure and execution_status.returncode != 0:
+            if logged and not self.ignore_runtime_failure and execution_status.returncode != 0:
                 # FAILURE
                 failures += 1
                 run_failed = f"FAILED EXECUTION: '{run_str}' -- return code {execution_status.returncode}"
@@ -141,7 +145,7 @@ class Executor():
                 continue
             # Find the execution time
             elif logged:
-                logged_metric = self.getMetric(execution_status, out, errs, outfile, attempt-1, dictVal, *args, **kwargs)
+                logged_metric = self.getMetric(logfile, outfile, attempt-1, dictVal, *args, **kwargs)
                 if logged_metric is not None:
                     # MetricIDs.OK
                     metrics.append(logged_metric)
@@ -155,7 +159,7 @@ class Executor():
                         metrics.append(self.infinity[MetricIDs.NotOK])
             else:
                 # Timed out evaluations MAY be recoverable
-                derived_timeout = self.getMetric(execution_status, out, errs, outfile, attempt, dictVal, *args, **kwargs)
+                derived_timeout = self.getMetric(logfile, outfile, attempt-1, dictVal, *args, **kwargs)
                 if derived_timeout is None:
                     failures += 1
                     timeout_warning = f"FAILED EXECUTION: '{run_str}' -- timed out; non-recoverable"
