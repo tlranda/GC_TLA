@@ -156,7 +156,7 @@ class Architecture():
         if not self.default_assign('machine_identifier', machine_identifier, STRING_TYPES):
             self.detect_machine_identifier()
 
-        # DERIVE full MPI rank count
+        # Derivative attributes
         self.init_derivable(**kwargs)
 
         # Set comparable attributes
