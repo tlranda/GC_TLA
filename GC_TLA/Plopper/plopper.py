@@ -56,10 +56,10 @@ class Plopper():
                 self.buffer = f.readlines()
 
         # Str-able attributes list
-        self.str_attrs = ['template','force_write','outputdir','findReplace','executor']
+        self.str_attrs = ['template','force_write','output_dir','findReplace','executor']
 
     def __str__(self):
-        return "{"+",\n".join([f"{attr}: {getattr(self,attr)}" for attr in self.str_attrs])+"}"
+        return "Plopper{"+",\n".join([f"{attr}: {getattr(self,attr)}" for attr in self.str_attrs])+"}"
 
     def buildTemplateCmds(self, outfile, *args, **kwargs):
         """

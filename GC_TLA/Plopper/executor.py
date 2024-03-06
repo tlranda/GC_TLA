@@ -71,10 +71,10 @@ class Executor():
                 except (ValueError, TypeError):
                     return None
 
-    def produceMetric(self, timing_list):
+    def produceMetric(self, metric_list):
         # Allows for different interpretations of repeated events
-        # Defaults to best-case scenario
-        return min(timing_list)
+        # Defaults to optimize for minimum value
+        return min(metric_list)
 
     def unable_to_execute(self):
         """
