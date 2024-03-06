@@ -2,9 +2,10 @@ import platform
 import subprocess
 import shlex
 import os
+import pathlib
 # Ensure that utilizing special (but reasonable) generic-type classes do not reject input
 INTEGER_TYPES = [int]
-STRING_TYPES = [str]
+STRING_TYPES = [str, pathlib.Path]
 try:
     import numpy as np
     INTEGER_TYPES.append(np.integer)
@@ -17,6 +18,9 @@ STRING_TYPES = tuple(STRING_TYPES)
 class Architecture():
     """
         Class to hold information about a platform architecture and automatically fetch it when not defined
+
+        All assignable attributes should have a detect_ATTR() function to set their default
+        All non-assignable attributes should derive their values after assignable values are initialized
     """
     def default_assign(self, attr, value, accepted_types):
         """
@@ -80,11 +84,10 @@ class Architecture():
         else:
             self.ranks_per_node = self.threads_per_node
 
-    def detect_number_of_nodes(self):
-        self.nodes = 1
+    def detect_hostfile(self):
+        self.hostfile = None
         if 'PBS_NODEFILE' in os.environ:
-            with open(os.environ['PBS_NODEFILE'],'r') as f:
-                self.nodes = len(f.readlines())
+            self.hostfile = os.environ['PBS_NODEFILE']
 
     def detect_machine_identifier(self):
         if 'HOSTNAME' in os.environ:
@@ -96,12 +99,44 @@ class Architecture():
         """
             If you subclass this class, must call this manually if you use super().__init__() first
         """
-        self.comparable = [k for (k,v) in self.__dict__.items() if not k.startswith('_') and not callable(v) and k != 'machine_identifier']
+        # Do not compare machine identifier as it may be customized without affecting architecture
+        # Do not compare the comparable list itself
+        incomparable = ['machine_identifier', 'comparable']
+        # Do not compare under- or dunder- attributes and do not compare callable attributes
+        incomparable.extend([k for (k,v) in self.__dict__.items() if k.startswith('_') or callable(v)])
+        # Compare everything else
+        self.comparable = [k for (k,v) in self.__dict__.items() if k not in incomparable]
+        return self.comparable
+
+    def get_derived(self):
+        """
+            Return attributes that are derived rather than set
+        """
+        comparable = set(self.comparable)
+        assignable = set()
+        for k in dir(self):
+            if k.startswith('detect_') and callable(getattr(self, k)):
+                # Drop detect_ prefix
+                assignable.add(k[7:])
+        return comparable.difference(assignable)
+
+    def init_derivable(self, **kwargs):
+        if 'nodes' in kwargs:
+            raise ValueError("Nodes are derived from a hostfile, or 1 if no hostfile. Provide a hostfile with one line per host")
+        if self.hostfile is None:
+            self.nodes = 1
+        else:
+            with open(self.hostfile,'r') as f:
+                self.nodes = len(f.readlines())
+
+        if 'mpi_ranks' in kwargs:
+            raise ValueError("MPI ranks are derived, set hostfile and ranks_per_node instead of directly setting MPI ranks")
+        self.mpi_ranks = self.nodes * self.ranks_per_node
 
     def __init__(self, threads_per_node=None,
                        gpus=None,
                        ranks_per_node=None,
-                       nodes=None,
+                       hostfile=None,
                        machine_identifier=None,
                        **kwargs):
         # Determine threads per node as 1 thread per logical processor
@@ -113,16 +148,16 @@ class Architecture():
         # Get number of ranks per node
         if not self.default_assign('ranks_per_node', ranks_per_node, INTEGER_TYPES):
             self.detect_ranks_per_node()
-        # Get number of nodes
-        if not self.default_assign('nodes', nodes, INTEGER_TYPES):
-            self.detect_number_of_nodes()
-
-        # DERIVE full MPI rank count
-        self.mpi_ranks = self.nodes * self.ranks_per_node
+        # Get hostfile
+        if not self.default_assign('hostfile', hostfile, STRING_TYPES):
+            self.detect_hostfile()
 
         # Friendly name for this architecture
         if not self.default_assign('machine_identifier', machine_identifier, STRING_TYPES):
             self.detect_machine_identifier()
+
+        # DERIVE full MPI rank count
+        self.init_derivable(**kwargs)
 
         # Set comparable attributes
         self.set_comparable()

@@ -7,6 +7,7 @@ import pathlib
 # Own library
 from GC_TLA.Utils.findReplaceRegex import findReplaceRegex
 from GC_TLA.Plopper.executor import Executor
+from GC_TLA.Plopper.architecture import Architecture
 
 class Plopper():
     """
@@ -15,7 +16,7 @@ class Plopper():
     """
     def __init__(self, template, output_dir=None, output_extension='.tmp',
                  force_write=False, retain_buffer_in_memory=True,
-                 findReplace=None, executor=None, **kwargs):
+                 findReplace=None, executor=None, architecture=None, **kwargs):
         self.template = pathlib.Path(template)
         # While not directly used in the basic Plopper, this attribute is typically useful
         # for subclasses to have at their disposal
@@ -41,6 +42,13 @@ class Plopper():
         if executor is not None and not isinstance(executor, Executor):
             raise TypeError(f"Type executor ({type(executor)}) is not a GC_TLA Executor")
         self.executor = executor
+
+        # Architecture can be passed in, but might not be
+        if architecture is not None and not isinstance(architecture, Architecture):
+            raise TypeError(f"Type architecture ({type(architecture)}) is not a GC_TLA Architecture")
+        elif architecture is None:
+            architecture = Architecture() # Default system detection
+        self.architecture = architecture
 
         # Load initial buffer contents
         if self.retain_buffer_in_memory:
@@ -99,6 +107,8 @@ class Plopper():
             destination = self.template
         elif destination is None:
             destination = self.output_dir.joinpath(str(uuid.uuid4())).with_suffix(self.output_extension)
+        # Track last-edited file in case it is useful to know (unit testing, etc)
+        self.previous_destination = destination
 
         # Produce commands to finalize this template
         template_cmds = self.buildTemplateCmds(destination, *args, **kwargs)
