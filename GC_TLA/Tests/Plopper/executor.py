@@ -1,7 +1,7 @@
 import unittest
 import warnings
 import pathlib
-from GC_TLA.Plopper.basic_executor import MetricIDs, Executor
+from GC_TLA.Plopper.executor import MetricIDs, Executor
 
 """
     Classes and Tests and numbered to induce an intentional order in the Python unittest module.
@@ -37,7 +37,7 @@ class Test_Executor_0_Validation(unittest.TestCase):
     def test_executor_0_complete_execution(self):
         exe = Executor()
         basic_path = pathlib.Path('executor_test_case')
-        self.assertEqual(exe.execute(basic_path, {}, lambda x, y, z: "echo '1'"), 1)
+        self.assertEqual(exe.execute(basic_path, lambda x, y: ["echo '1'"]), 1)
         # Clean up resulting test data
         for i in range(3):
             new_path = basic_path.with_name(f"{basic_path.name}_{i}.log")

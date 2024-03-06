@@ -50,7 +50,7 @@ class Executor():
         self.timeout = timeout
         self.strict_cleanup = strict_cleanup
 
-    def getMetric(self, logfile, outfile, attempt, dictVal, *args, aggregator_fn=None, **kwargs):
+    def getMetric(self, logfile, outfile, attempt, *args, aggregator_fn=None, **kwargs):
         """
             Very simple parsing expects metric to be a numeric value (or newline-delimited series of values to interpret via aggregator_fn)
         """
@@ -83,16 +83,26 @@ class Executor():
         # Perform any post-execution actions to ensure the next execution will be capable of running properly
         return
 
-    def execute(self, outfile, dictVal, runstr_fn, *args, **kwargs):
-        # Using outfile, the attempt #, and dictVal (as well as *args, **kwargs),
-        # runstr_fun() should return a subprocess-ready string to execute
-        # This function will attempt the string with retries and return the metric, ergo
-        # it is the primary method for other classes to interact with
+    def sufficiently_logged(self, cmd_queue, last_idx, timeouts):
+        """
+            Determine if last executed / timed out command is likely to have done enough to produce
+            usable logs
+            Subclasses can update if analysis for the metric is not the final command in the queue
+        """
+        return last_idx >= len(cmd_queue)-1
+
+    def execute(self, outfile, runstr_fn, *args, **kwargs):
+        """
+        Using outfile and the attempt # (as well as *args, **kwargs),
+        runstr_fun() should return a list of subprocess-ready strings to execute
+        This function will attempt to execute each string with retries and return the metric, ergo
+        it is the primary method for other classes to interact with
+        """
         metrics = []
         failures = 0
         attempt = 0
         while failures <= self.retries and len(metrics) < self.evaluation_tries:
-            run_str = runstr_fn(outfile, attempt, dictVal, *args, **kwargs)
+            run_strs = runstr_fn(outfile, attempt, *args, **kwargs)
             env = self.set_os_environ(attempt)
             out, errs = None, None
             logged = False
@@ -104,23 +114,33 @@ class Executor():
             # Beyond this point, attempt is updated -- things depending on attempt should be set above
             attempt += 1
             with open(logfile, "w") as logs:
+                timeouts = False
                 trial_start_time = time.time()
                 if self.timeout is not None:
-                    execution_status = subprocess.Popen(run_str, shell=True, stdout=logs, stderr=logs, env=env)
-                    #child_pid = execution_status.pid
-                    try:
-                        execution_status.communicate(timeout=self.timeout)
-                        logged = True
-                    except subprocess.TimeoutExpired:
+                    for cmd_i, r_str in enumerate(run_strs):
+                        execution_status = subprocess.Popen(r_str, shell=True, stdout=logs, stderr=logs, env=env)
+                        #child_pid = execution_status.pid
                         try:
-                            execution_status.kill()
-                        except:
-                            pass
-                        time.sleep(1)
+                            execution_status.communicate(timeout=self.timeout)
+                        except subprocess.TimeoutExpired:
+                            try:
+                                timeouts = True
+                                execution_status.kill()
+                                if not self.ignore_runtime_failure:
+                                    break
+                            except ProcessLookupError:
+                                # Sometimes the process ends quickly/slowly and we can generate this exception
+                                if not self.ignore_runtime_failure:
+                                    break
+                            time.sleep(1)
                 else:
-                    execution_status = subprocess.run(run_str, shell=True, stdout=logs, stderr=logs, env=env)
-                    logged = True
+                    for cmd_i, r_str in enumerate(run_strs):
+                        execution_status = subprocess.run(r_str, shell=True, stdout=logs, stderr=logs, env=env)
+                        if not self.ignore_runtime_failure and execution_status.returncode != 0:
+                            break
                 trial_duration = time.time() - trial_start_time
+            # Determine whether the logs are expected to be useful or not
+            logged = self.sufficiently_logged(run_strs, cmd_i, timeouts)
             # Cleanup may be defined between executions
             try:
                 self.cleanup(outfile, attempt)
@@ -145,7 +165,7 @@ class Executor():
                 continue
             # Find the execution time
             elif logged:
-                logged_metric = self.getMetric(logfile, outfile, attempt-1, dictVal, *args, **kwargs)
+                logged_metric = self.getMetric(logfile, outfile, attempt-1, *args, **kwargs)
                 if logged_metric is not None:
                     # MetricIDs.OK
                     metrics.append(logged_metric)
@@ -159,7 +179,7 @@ class Executor():
                         metrics.append(self.infinity[MetricIDs.NotOK])
             else:
                 # Timed out evaluations MAY be recoverable
-                derived_timeout = self.getMetric(logfile, outfile, attempt-1, dictVal, *args, **kwargs)
+                derived_timeout = self.getMetric(logfile, outfile, attempt-1, *args, **kwargs)
                 if derived_timeout is None:
                     failures += 1
                     timeout_warning = f"FAILED EXECUTION: '{run_str}' -- timed out; non-recoverable"
