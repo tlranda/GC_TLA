@@ -6,7 +6,7 @@ import enum
 # NON-DEFAULT MODULES
 import numpy as np
 # Own library
-from GC_TLA.Utils import Configurable
+from GC_TLA.utils import Configurable
 
 # ENUM for infinity values -- used by implementers and users!
 class MetricIDs(enum.Enum):

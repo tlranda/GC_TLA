@@ -1,6 +1,6 @@
 import unittest
 import warnings
-from GC_TLA.Utils.findReplaceRegex import findReplaceRegex
+from GC_TLA.utils import FindReplaceRegex
 
 """
     Classes and Tests and numbered to induce an intentional order in the Python unittest module.
@@ -20,30 +20,30 @@ class Test_FRR_0_Constructors(unittest.TestCase):
     def test_const_0_warn_on_bad_find(self):
         # When a find regex lacks a capture group (), we should be warned during construction
         with self.assertWarns(UserWarning):
-            findReplaceRegex((r"A[0-9]+",))
+            FindReplaceRegex((r"A[0-9]+",))
 
     def test_const_1_warn_dup_prefix(self):
         # When a prefix duplicates the start of a find regex, we should be warned during construction IF the user did not indicate they knew that was the case
         with self.assertWarns(UserWarning):
-            findReplaceRegex((r"Z(A[0-9]+)",),
+            FindReplaceRegex((r"Z(A[0-9]+)",),
                              prefix=[("Z","")])
 
     def test_const_2_warn_dup_suffix(self):
         # When a suffix duplicates the end of a find regex, we should be warned during construction IF the user did not indicate they knew that was the case
         with self.assertWarns(UserWarning):
-            findReplaceRegex((r"(A[0-9]+)X",),
+            FindReplaceRegex((r"(A[0-9]+)X",),
                              suffix=[("X","")])
 
     def test_const_3_raise_insufficient_prefix(self):
         # When less prefixes are defined than find regexes, a ValueError should be raised
         with self.assertRaises(ValueError):
-            findReplaceRegex((r"sk(i)p", r"Z(A[0-9]+)X",),
+            FindReplaceRegex((r"sk(i)p", r"Z(A[0-9]+)X",),
                              prefix=[("just","one"),])
 
     def test_const_4_raise_insufficient_suffix(self):
         # When less suffixes are defined than regexes, a ValueError should be raised
         with self.assertRaises(ValueError):
-            findReplaceRegex((r"sk(i)p", r"Z(A[0-9]+)X",),
+            FindReplaceRegex((r"sk(i)p", r"Z(A[0-9]+)X",),
                              suffix=[("just","one"),])
 
 class Test_FRR_1_Basic_Functionality(unittest.TestCase):
@@ -53,7 +53,7 @@ class Test_FRR_1_Basic_Functionality(unittest.TestCase):
     """
     def setUp(self):
         # Single point to define a simple valid instance that is used in test cases
-        self.FRR_instance = findReplaceRegex((r"(A[0-9]+)",),
+        self.FRR_instance = FindReplaceRegex((r"(A[0-9]+)",),
                                              prefix=[("Z","X",)],
                                              suffix=[("X","Z",)])
 
@@ -108,7 +108,7 @@ class Test_FRR_2_DupPrefSuf_Functionality(unittest.TestCase):
     """
     def setUp(self):
         # Simple valid instance to match test cases
-        self.FRR_instance = findReplaceRegex((r"Z(A[0-9]+)X",),
+        self.FRR_instance = FindReplaceRegex((r"Z(A[0-9]+)X",),
                                              prefix=[("Z","X",)],
                                              suffix=[("X","Z",)],
                                              expectPrefixMatch=True,

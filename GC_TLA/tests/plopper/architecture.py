@@ -1,7 +1,7 @@
 import unittest
 import warnings
 import pathlib
-from GC_TLA.Plopper.architecture import Architecture as Arch
+from GC_TLA.plopper import Arch
 
 """
     Classes and Tests and numbered to induce an intentional order in the Python unittest module.

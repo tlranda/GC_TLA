@@ -1,7 +1,7 @@
 import unittest
 import warnings
 import pathlib
-from GC_TLA.Plopper.executor import MetricIDs, Executor
+from GC_TLA.plopper import MetricIDs, Executor
 
 """
     Classes and Tests and numbered to induce an intentional order in the Python unittest module.
@@ -21,7 +21,8 @@ class Test_MIDs_0_Validation(unittest.TestCase):
     def test_mids_1_validate_all_but_NotOK(self):
         self.assertTrue(MetricIDs.validate_infinity_mapping({MetricIDs.TimeOut: None,
                                                              MetricIDs.BadReturnCode: None,
-                                                             MetricIDs.BadParse: None}))
+                                                             MetricIDs.BadParse: None,
+                                                             MetricIDs.UnableToExecute: None}))
     def test_mids_2_invalidate_partial_spec(self):
         self.assertFalse(MetricIDs.validate_infinity_mapping({MetricIDs.TimeOut: None}))
 

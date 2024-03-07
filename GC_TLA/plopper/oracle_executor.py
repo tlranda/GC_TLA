@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 import pandas as pd
 # Own library
-from GC_TLA.Plopper import MetricIDs, Executor
+from GC_TLA.plopper import MetricIDs, Executor
 
 class OracleExecutor(Executor):
     """

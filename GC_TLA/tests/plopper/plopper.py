@@ -1,7 +1,7 @@
 import unittest
 import warnings
 import pathlib
-from GC_TLA.Plopper.plopper import Plopper
+from GC_TLA.plopper import Plopper
 
 """
     Classes and Tests and numbered to induce an intentional order in the Python unittest module.

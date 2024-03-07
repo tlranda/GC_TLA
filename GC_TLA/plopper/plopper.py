@@ -5,8 +5,8 @@ import warnings
 import stat
 import pathlib
 # Own library
-from GC_TLA.Utils import (Configurable, FindReplaceRegex)
-from GC_TLA.Plopper import (Arch, Executor)
+from GC_TLA.utils import (Configurable, FindReplaceRegex)
+from GC_TLA.plopper import (Arch, Executor)
 
 class Plopper(Configurable):
     """

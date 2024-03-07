@@ -10,8 +10,8 @@ import ConfigSpace.hyperparameters as CSH
 from skopt.space import Real
 from sdv.constraints import ScalarRange
 # Own library
-from GC_TLA.Utils import Configurable
-from GC_TLA.Plopper import (Arch, Executor, OracleExecutor, Plopper)
+from GC_TLA.utils import Configurable
+from GC_TLA.plopper import (Arch, Executor, OracleExecutor, Plopper)
 
 class ProblemReturnMode(enum.Enum):
     ytopt = enum.auto()

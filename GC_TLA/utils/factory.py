@@ -1,7 +1,7 @@
 import pdb
 import warnings
 # Own library
-from GC_TLA.Utils import Configurable
+from GC_TLA.utils import Configurable
 
 class Factory(Configurable):
     def __init__(self, factory_class, debug_class_construction=False):
