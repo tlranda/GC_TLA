@@ -9,12 +9,12 @@ from GC_TLA.Plopper.architecture import Architecture as Arch
 from GC_TLA.Plopper.executor import Executor
 from GC_TLA.Plopper.plopper import Plopper
 
-
-class ProblemFactory():
+class Factory(FactoryConfigurable):
     def __init__(self, factory_class, debug_class_construction=False, arch=None, executor=None, plopper=None, plopper_template=None):
         assert issubclass(factory_class, FactoryConfigurable), "Factory classes must be GC_TLA FactoryConfigurable subclasses"
         self.class_def = factory_class
         self.class_name = factory_class.__name__
+        self.direct_handles = dict()
         if arch is None:
             arch = Arch()
         if executor is None:
@@ -56,12 +56,12 @@ class ProblemFactory():
     def handles(self, name):
         # Name will be <class_name>_<problem_identifier>
         if '_' not in name:
-            return (False, None)
+            return (False, False, None)
         name, identifier = name.split('_',1)
         if name == self.class_name:
-            return (True, identifier)
+            return (False, True, identifier)
         else:
-            return (False, None)
+            return (False, False, None)
 
     def build(self, name, identifier):
         init_args = self.pass_on_init_args + [identifier]
@@ -71,8 +71,10 @@ class ProblemFactory():
         return instance
 
     def getattr(self, name):
-        (handled, identifier) = self.handles(name)
-        if handled:
-            return self.build(name, identifier)
+        if name in self.direct_handles:
+            return self.direct_handles[name]
+        (buildable, value) = self.handles(name)
+        if buildable:
+            return self.build(name, value)
         return
 
