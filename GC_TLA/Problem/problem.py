@@ -10,6 +10,7 @@ import ConfigSpace.hyperparameters as CSH
 from skopt.space import Real
 from sdv.constraints import ScalarRange
 # Own library
+from GC_TLA.Utils.factory_configurable import FactoryConfigurable
 from GC_TLA.Plopper.architecture import Architecture as Arch
 from GC_TLA.Plopper.executor import Executor
 from GC_TLA.Plopper.oracle_executor import OracleExecutor
@@ -27,11 +28,12 @@ class ProblemReturnMode(enum.Enum):
             raise ValueError(f"Value '{string}' cannot be converted into ProblemReturnMode (options: {mode_keys})")
         return list(cls.__members__.values())[mode_keys.index(l_string)]
 
-class Problem():
+class Problem(FactoryConfigurable):
     def __init__(self, architecture, executor, plopper,
                  tunable_params, problem_identifier,
                  silent=False, returnmode='ytopt', logfile=None, logfile_clobber=False,
                  log_result_col='objective', log_time_col='elapsed_sec'):
+        super().__init__()
         """
             Subclasses should additionally define:
                 * output_space
@@ -99,13 +101,6 @@ class Problem():
         modified_plopper_string = "\n\t".join(str(self.plopper).split("\n"))
         components.append(modified_plopper_string)
         return "\n\t".join(components)
-
-    def _configure(self, **kwargs):
-        """
-            Intended ONLY for late overriding (ie factory initialization)
-        """
-        for key, value in kwargs.items():
-            setattr(self, key, value)
 
     def _log(self, config, result):
         if self.logfile is None:
