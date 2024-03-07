@@ -5,6 +5,8 @@ import warnings
 import enum
 # NON-DEFAULT MODULES
 import numpy as np
+# Own library
+from GC_TLA.Utils import Configurable
 
 # ENUM for infinity values -- used by implementers and users!
 class MetricIDs(enum.Enum):
@@ -33,13 +35,14 @@ class MetricIDs(enum.Enum):
                 return False
         return True
 
-class Executor():
+class Executor(Configurable):
     """
         Executes runtime-ready shell code via subprocess, utilizing aggregation metrics
         and limited retries to get stable measurements
     """
     def __init__(self, evaluation_tries=3, retries=0, infinity=None,
                  ignore_runtime_failure=False, timeout=None, strict_cleanup=False):
+        super().__init__()
         self.evaluation_tries = evaluation_tries
         self.retries = retries
         if infinity is None:

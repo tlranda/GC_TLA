@@ -13,7 +13,7 @@ import warnings
 # Default list of one tuple matching nothing to nothing (used as default padding for __init__())
 empty_from_to = [("","",),]
 
-class findReplaceRegex:
+class FindReplaceRegex:
     def __init__(self, find, prefix=None, suffix=None, expectPrefixMatch=False, expectSuffixMatch=False):
         if type(find) is str:
             find = (find,)

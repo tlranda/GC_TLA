@@ -5,11 +5,10 @@ import warnings
 import stat
 import pathlib
 # Own library
-from GC_TLA.Utils.findReplaceRegex import findReplaceRegex
-from GC_TLA.Plopper.executor import Executor
-from GC_TLA.Plopper.architecture import Architecture
+from GC_TLA.Utils import (Configurable, FindReplaceRegex)
+from GC_TLA.Plopper import (Arch, Executor)
 
-class Plopper():
+class Plopper(Configurable):
     """
         Class that writes variations of a template file out based on a configuration
         Also utilizes an executor to evaluate the templated file
@@ -17,6 +16,7 @@ class Plopper():
     def __init__(self, template, output_dir=None, output_extension='.tmp',
                  force_write=False, retain_buffer_in_memory=True,
                  findReplace=None, executor=None, architecture=None, **kwargs):
+        super().__init__()
         self.template = pathlib.Path(template)
         # While not directly used in the basic Plopper, this attribute is typically useful
         # for subclasses to have at their disposal
@@ -34,8 +34,8 @@ class Plopper():
         self.output_dir.mkdir(exist_ok=True)
 
         # Ensure we can work with the provided substitution object
-        if findReplace is not None and not isinstance(findReplace, findReplaceRegex):
-            raise TypeError(f"Type findReplace ({type(findReplace)}) is not a GC_TLA findReplaceRegex")
+        if findReplace is not None and not isinstance(findReplace, FindReplaceRegex):
+            raise TypeError(f"Type findReplace ({type(findReplace)}) is not a GC_TLA FindReplaceRegex")
         self.findReplace = findReplace
 
         # Executor must be saved but ensure we can work with it
@@ -44,10 +44,10 @@ class Plopper():
         self.executor = executor
 
         # Architecture can be passed in, but might not be
-        if architecture is not None and not isinstance(architecture, Architecture):
+        if architecture is not None and not isinstance(architecture, Arch):
             raise TypeError(f"Type architecture ({type(architecture)}) is not a GC_TLA Architecture")
         elif architecture is None:
-            architecture = Architecture() # Default system detection
+            architecture = Arch() # Default system detection
         self.architecture = architecture
 
         # Load initial buffer contents
@@ -77,7 +77,7 @@ class Plopper():
 
     def fillTemplate(self, destination, substitution="", *args, lookup_match_substitution=None, **kwargs):
         """
-            Create the file at destination and copy contents from the template file there, making edits as necessary through the findReplaceRegex object
+            Create the file at destination and copy contents from the template file there, making edits as necessary through the FindReplaceRegex object
 
             substitution and lookup_match_substitution are directly passed to the findReplace object's .findReplace()
         """

@@ -79,6 +79,11 @@ class Architecture():
                 self.gpus = 0
 
     def detect_ranks_per_node(self):
+        """
+            User should be able to limit ranks_per_node <= resources if desired, thus this attribute
+            is not derived even though its default behavior is to derive values from other detected
+            or manually set attributes
+        """
         if self.gpus > 0:
             self.ranks_per_node = self.gpus
         else:
@@ -97,7 +102,8 @@ class Architecture():
 
     def set_comparable(self):
         """
-            If you subclass this class, must call this manually if you use super().__init__() first
+            If you subclass this class, must call this manually at end of initialization (done by default at end
+            of super().__init__(), so running that last in your subclass's init is preferable when suitable)
         """
         # Do not compare machine identifier as it may be customized without affecting architecture
         # Do not compare the comparable list itself
@@ -116,7 +122,7 @@ class Architecture():
         assignable = set()
         for k in dir(self):
             if k.startswith('detect_') and callable(getattr(self, k)):
-                # Drop detect_ prefix
+                # Drop prefix: 'detect_'
                 assignable.add(k[7:])
         return comparable.difference(assignable)
 
@@ -159,7 +165,7 @@ class Architecture():
         # Derivative attributes
         self.init_derivable(**kwargs)
 
-        # Set comparable attributes
+        # Set comparable attributes -- this should remain at the very end of init()
         self.set_comparable()
 
     def __str__(self):

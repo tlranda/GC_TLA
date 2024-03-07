@@ -3,17 +3,22 @@ import pathlib
 import numpy as np
 import pandas as pd
 # Own library
-from GC_TLA.Plopper.executor import MetricIDs, Executor
+from GC_TLA.Plopper import MetricIDs, Executor
 
 class OracleExecutor(Executor):
     """
         When evaluation results are already known, can utilize an OracleEvaluator to look up values in oracleSearch()
     """
-    def __init__(self, oracle_path, oracle_sort_keys=None, oracle_match_cols=None, oracle_return_cols=None,
+    def __init__(self, oracle_path=None, oracle_sort_keys=None, oracle_match_cols=None, oracle_return_cols=None,
                  # Settings for parent class
                  evaluation_tries=1, retries=0, infinity=None,
                  ignore_runtime_failures=False, timeout=None, strict_cleanup=False):
         super().__init__(evaluation_tries, retries, infinity, ignore_runtime_failures, timeout, strict_cleanup)
+        # When oracle isn't provided, fall back to operating as a standard executor
+        if oracle_path is None:
+            self.as_oracle = False
+            return
+        self.as_oracle = True
         self.oracle = pathlib.Path(oracle_path)
         self.oracle_data = pd.read_csv(self.oracle)
         if oracle_sort_keys is not None:
@@ -35,6 +40,8 @@ class OracleExecutor(Executor):
                 Typically, this means that you get a scalar for as_rank=True or a pd.Series if as_rank=False
                 This distinction is expected to matter most for produceMetric() implementation
         """
+        if not self.as_oracle:
+            raise ValueError("Not initialized with an oracle! Only able to operate as standard executor!")
         if type(search) is not tuple:
             search = tuple(search)
         n_matching_columns = (self.oracle_matching == search).sum(1)

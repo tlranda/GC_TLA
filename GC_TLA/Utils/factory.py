@@ -3,27 +3,15 @@ import warnings
 # Dependent modules
 import ConfigSpace as CS
 # Own library
-from GC_TLA.Utils.factory_configurable import FactoryConfigurable
-from GC_TLA.Problem import Problem_Classes
-from GC_TLA.Plopper.architecture import Architecture as Arch
-from GC_TLA.Plopper.executor import Executor
-from GC_TLA.Plopper.plopper import Plopper
+from GC_TLA.Utils import Configurable
 
-class Factory(FactoryConfigurable):
-    def __init__(self, factory_class, debug_class_construction=False, arch=None, executor=None, plopper=None, plopper_template=None):
-        assert issubclass(factory_class, FactoryConfigurable), "Factory classes must be GC_TLA FactoryConfigurable subclasses"
+class Factory(Configurable):
+    def __init__(self, factory_class, debug_class_construction=False):
+        assert issubclass(factory_class, Configurable), "Factory classes must be GC_TLA Configurable subclasses"
         self.class_def = factory_class
         self.class_name = factory_class.__name__
         self.direct_handles = dict()
-        if arch is None:
-            arch = Arch()
-        if executor is None:
-            executor = Executor()
-        if plopper is None:
-            if plopper_template is None:
-                plopper_template = 'dum'
-            plopper = Plopper(plopper_template, executor=executor, architecture=arch)
-        self.pass_on_init_args = [arch, executor, plopper, CS.ConfigurationSpace(),]
+        self.pass_on_init_args = list()
         self.pass_on_init_kwargs = dict()
         self.debug_class_construction = debug_class_construction
 
@@ -44,7 +32,7 @@ class Factory(FactoryConfigurable):
                 if arg_idx >= len(args):
                     break
         if len(args[arg_idx:]) > 0:
-            if warn_extension:
+            if len(self.pass_on_init_args) > 0 and warn_extension:
                 warnings.warn(f"Did not match {len(args[arg_idx:])} new arguments, extending argument list", UserWarning)
             self.pass_on_init_args.extend(args[arg_idx:])
 
@@ -53,28 +41,37 @@ class Factory(FactoryConfigurable):
         # changes here will propagate to ALL subsequent instantiations
         self.class_def._configure(**kwargs)
 
+    def map_identifier_to_args(self, identifier):
+        # Default implementation returns the identifier as a single argument without any kwargs
+        # When overriding, always return a tuple of:
+        #   1) list of positional args (that come AFTER pass_on_init args)
+        #   2) dictionary with additional keyword arguments
+        return ([identifier], dict())
+
     def handles(self, name):
         # Name will be <class_name>_<problem_identifier>
+        # But for extensibility, we map problem identifier to args/kwargs
         if '_' not in name:
-            return (False, False, None)
+            return (False, False, (list(),dict()))
         name, identifier = name.split('_',1)
         if name == self.class_name:
-            return (False, True, identifier)
+            return (False, True, self.map_identifier_to_args(identifier))
         else:
-            return (False, False, None)
+            return (False, False, (list(),dict()))
 
-    def build(self, name, identifier):
-        init_args = self.pass_on_init_args + [identifier]
+    def build(self, name, *args, **kwargs):
+        init_args = self.pass_on_init_args + args
+        init_kwargs = dict((k,v) for (k,v) in self.pass_on_init_kwargs).update(kwargs)
         if self.debug_class_construction:
             pdb.set_trace()
-        instance = self.class_def(*init_args, **self.pass_on_init_kwargs)
+        instance = self.class_def(*init_args, **init_kwargs)
         return instance
 
     def getattr(self, name):
         if name in self.direct_handles:
             return self.direct_handles[name]
-        (buildable, value) = self.handles(name)
+        (buildable, (args, kwargs)) = self.handles(name)
         if buildable:
-            return self.build(name, value)
+            return self.build(name, *args, **kwargs)
         return
 

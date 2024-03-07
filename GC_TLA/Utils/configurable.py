@@ -3,7 +3,7 @@
     permitting updates to propagate to every instanced object (after the call, previously
     instanced objects are not updated)
 """
-class FactoryConfigurable():
+class Configurable():
     _configurable_core = {}
     def __init__(self):
         # Only handle the core items, subclasses will define anything else
