@@ -3,6 +3,9 @@ import subprocess
 import shlex
 import os
 import pathlib
+# Own library
+from GC_TLA.utils import Configurable
+
 # Ensure that utilizing special (but reasonable) generic-type classes do not reject input
 INTEGER_TYPES = [int]
 STRING_TYPES = [str, pathlib.Path]
@@ -15,7 +18,7 @@ except ImportError:
 INTEGER_TYPES = tuple(INTEGER_TYPES)
 STRING_TYPES = tuple(STRING_TYPES)
 
-class Architecture():
+class Architecture(Configurable):
     """
         Class to hold information about a platform architecture and automatically fetch it when not defined
 
@@ -145,6 +148,7 @@ class Architecture():
                        hostfile=None,
                        machine_identifier=None,
                        **kwargs):
+        super().__init__()
         # Determine threads per node as 1 thread per logical processor
         if not self.default_assign('threads_per_node', threads_per_node, INTEGER_TYPES):
             self.detect_threads_per_node()

@@ -121,7 +121,6 @@ class Executor(Configurable):
         while failures <= self.retries and len(metrics) < self.evaluation_tries:
             run_strs = runstr_fn(outfile, attempt, *args, **kwargs)
             env = self.set_os_environ(attempt)
-            out, errs = None, None
             logged = False
             # This is OK even if outfile is pathlib.Path already
             logfile = pathlib.Path(outfile)

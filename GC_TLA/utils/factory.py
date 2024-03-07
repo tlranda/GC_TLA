@@ -4,14 +4,30 @@ import warnings
 from GC_TLA.utils import Configurable
 
 class Factory(Configurable):
-    def __init__(self, factory_class, debug_class_construction=False):
+    def __init__(self, factory_class, factory_name=None, debug_class_construction=False,
+                 initial_args=None, initial_args_first=True, initial_kwargs=None,
+                 initial_configure=None, initial_direct=None):
+        super().__init__()
         assert issubclass(factory_class, Configurable), "Factory classes must be GC_TLA Configurable subclasses"
         self.class_def = factory_class
-        self.class_name = factory_class.__name__
-        self.direct_handles = dict()
-        self.pass_on_init_args = list()
-        self.pass_on_init_kwargs = dict()
+        if factory_name is None:
+            factory_name = factory_class.__name__
+        self.class_name = factory_name
         self.debug_class_construction = debug_class_construction
+        self.initial_args_first = initial_args_first
+        # All of the following have non-None defaults, but use None for clarity
+        if initial_direct is None:
+            initial_direct = dict()
+        self.direct_handles = initial_direct
+        if initial_args is None:
+            initial_args = list()
+        self.pass_on_init_args = initial_args
+        if initial_kwargs is None:
+            initial_kwargs = dict()
+        self.pass_on_init_kwargs = initial_kwargs
+        # Call the configure method if initial decision is ready
+        if initial_configure is not None:
+            self.configure_class(**initial_configure)
 
     def update_init_args(self, *args, ignore_type_match=False, warn_extension=True):
         arg_idx = 0
@@ -50,25 +66,32 @@ class Factory(Configurable):
         # Name will be <class_name>_<problem_identifier>
         # But for extensibility, we map problem identifier to args/kwargs
         if '_' not in name:
-            return (False, False, (list(),dict()))
+            return (False, list(), dict())
         name, identifier = name.split('_',1)
         if name == self.class_name:
-            return (False, True, self.map_identifier_to_args(identifier))
+            return (True, *self.map_identifier_to_args(identifier))
         else:
-            return (False, False, (list(),dict()))
+            return (False, list(), dict())
 
     def build(self, name, *args, **kwargs):
-        init_args = self.pass_on_init_args + args
-        init_kwargs = dict((k,v) for (k,v) in self.pass_on_init_kwargs).update(kwargs)
-        if self.debug_class_construction:
-            pdb.set_trace()
+        if self.initial_args_first:
+            init_args = self.pass_on_init_args + list(args)
+        else:
+            init_args = list(args) + self.pass_on_init_args
+        init_kwargs = dict((k,v) for (k,v) in self.pass_on_init_kwargs.items())
+        init_kwargs.update(**kwargs)
+        # Weird edge case: if both pass_on_init kwargs and kwargs are empty, this becomes None
+        if init_kwargs is None:
+            init_kwargs = dict()
         instance = self.class_def(*init_args, **init_kwargs)
         return instance
 
     def getattr(self, name):
+        if self.debug_class_construction:
+            pdb.set_trace()
         if name in self.direct_handles:
             return self.direct_handles[name]
-        (buildable, (args, kwargs)) = self.handles(name)
+        (buildable, args, kwargs) = self.handles(name)
         if buildable:
             return self.build(name, *args, **kwargs)
         return

@@ -96,7 +96,7 @@ class Plopper(Configurable):
                 else:
                     f.write(self.findReplace.findReplace(line, substitution, lookup_match_substitution=lookup_match_substitution))
         # Ensure proper permissions on generated files (755)
-        os.chmod(destination, stat.S_IRWXU | stat.IRGRP | stat.IXGRP | stat.S_IROTH | stat.S_IXOTH)
+        os.chmod(destination, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
 
         # Purge buffer it not retaining in memory
         if not self.retain_buffer_in_memory:
@@ -114,6 +114,8 @@ class Plopper(Configurable):
         template_cmds = self.buildTemplateCmds(destination, *args, **kwargs)
 
         # Indicators that template should be filled in
+        import pdb
+        pdb.set_trace()
         if not use_raw_template and (self.force_write or template_cmds is not None):
             self.fillTemplate(destination, *args, **kwargs)
 

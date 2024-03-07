@@ -10,7 +10,7 @@ import ConfigSpace.hyperparameters as CSH
 from skopt.space import Real
 from sdv.constraints import ScalarRange
 # Own library
-from GC_TLA.utils import Configurable
+from GC_TLA.utils import (Configurable, ParamSpace, Real, Integer, Categorical, inf)
 from GC_TLA.plopper import (Arch, Executor, OracleExecutor, Plopper)
 
 class ProblemReturnMode(enum.Enum):
@@ -137,7 +137,7 @@ class Problem(Configurable):
                 destination = kwargs.pop('destination')
             else:
                 destination = None
-            result = self.plopper.templateExecute(destination, configList, *args, **kwargs)
+            result = self.plopper.templateExecute(destination, configList, *args, lookup_match_substitution=dict((k,v) for (k,v) in zip(self.tunable_params, configList)), **kwargs)
 
         if not self.silent:
             print(f"Evaluation Result: {config} --> {result}")
