@@ -1,7 +1,5 @@
 import pdb
 import warnings
-# Dependent modules
-import ConfigSpace as CS
 # Own library
 from GC_TLA.Utils import Configurable
 

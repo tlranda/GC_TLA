@@ -10,11 +10,8 @@ import ConfigSpace.hyperparameters as CSH
 from skopt.space import Real
 from sdv.constraints import ScalarRange
 # Own library
-from GC_TLA.Utils.factory_configurable import FactoryConfigurable
-from GC_TLA.Plopper.architecture import Architecture as Arch
-from GC_TLA.Plopper.executor import Executor
-from GC_TLA.Plopper.oracle_executor import OracleExecutor
-from GC_TLA.Plopper.plopper import Plopper
+from GC_TLA.Utils import Configurable
+from GC_TLA.Plopper import (Arch, Executor, OracleExecutor, Plopper)
 
 class ProblemReturnMode(enum.Enum):
     ytopt = enum.auto()
@@ -28,7 +25,7 @@ class ProblemReturnMode(enum.Enum):
             raise ValueError(f"Value '{string}' cannot be converted into ProblemReturnMode (options: {mode_keys})")
         return list(cls.__members__.values())[mode_keys.index(l_string)]
 
-class Problem(FactoryConfigurable):
+class Problem(Configurable):
     def __init__(self, architecture, executor, plopper,
                  tunable_params, problem_identifier,
                  silent=False, returnmode='ytopt', logfile=None, logfile_clobber=False,
@@ -127,6 +124,7 @@ class Problem(FactoryConfigurable):
 
         # Use oracle evaluation only when proper class/subclass and use_oracle=True passed in
         if isinstance(self.executor, OracleExecutor) and \
+            self.executor.as_oracle==True and \
             'use_oracle' in kwargs and \
             kwargs['use_oracle']==True:
             # CIRCUMVENT plopper to directly interact with OracleExecutor
