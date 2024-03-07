@@ -154,3 +154,11 @@ class Problem(FactoryConfigurable):
         else:
             raise ValueError(f"Return mode {self.returnmode} not implemented!")
 
+class RuntimeProblem(Problem):
+    """
+        Common problem definition that includes an output space as defined below
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.output_space = ParamSpace([Real(0.0, inf, name='time')])
+
