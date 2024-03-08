@@ -9,6 +9,7 @@ from GC_TLA.utils import Configurable
 # Ensure that utilizing special (but reasonable) generic-type classes do not reject input
 INTEGER_TYPES = [int]
 STRING_TYPES = [str, pathlib.Path]
+BOOLEAN_TYPES = [bool]
 try:
     import numpy as np
     INTEGER_TYPES.append(np.integer)
@@ -17,6 +18,7 @@ except ImportError:
     pass
 INTEGER_TYPES = tuple(INTEGER_TYPES)
 STRING_TYPES = tuple(STRING_TYPES)
+BOOLEAN_TYPES = tuple(BOOLEAN_TYPES)
 
 class Architecture(Configurable):
     """
