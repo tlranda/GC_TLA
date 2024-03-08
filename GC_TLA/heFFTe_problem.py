@@ -126,6 +126,11 @@ class heFFTeProblemIDMapper(Mapping):
         return len(self.NODE_SCALES) * (len(self.APP_SCALES) ** 3)
 
 heFFTeProblemID_mapping = heFFTeProblemIDMapper()
+min_app, max_app = heFFTeProblemID_mapping.app_scale_range
+constraints = [ScalarRange(column_name=f'p1{LETTER}', low_value=min_app, high_value=max_app, strict_boundaries=False) for LETTER in "xyz"]
+# Node Scale != Ranks Scale, must be determined later
+#min_ranks, max_ranks = heFFTeProblemID_mapping.node_scale_range
+#constraints.append(ScalarRange(column_name='mpi_ranks', low_value=min_ranks, high_value=max_ranks, strict_boundaries=False))
 IMPORT_AS='heFFTe'
 
 class heFFTeInstanceFactory(Factory):
