@@ -164,11 +164,14 @@ class Syr2kPlopperFactory(Factory):
         dataset_name = self.import_to_dataset[name.rsplit("_",1)[1]]
         instance.dataset = f"-D{dataset_name}_DATASET"
         return instance
+
+syr2k_FindReplaceRegex = FindReplaceRegex(r"(P[0-9]+)", prefix=("#","",))
+
 Syr2kPlopperFactory._configure(import_to_dataset=import_to_dataset)
 syr2k_plopper_factory = Syr2kPlopperFactory(Syr2kPlopper,
                                             initial_args=[pathlib.Path('mmp.c')],
                                             initial_kwargs={'output_extension': '.c',
-                                                            'findReplace': FindReplaceRegex(r"(P[0-9]+)", prefix=("#","",)),})
+                                                            'findReplace': syr2k_FindReplaceRegex,})
 syr2k_instance_factory._update_from_core(plopper_factory=syr2k_plopper_factory)
 
 # Finally, we can update the import method for this file to utilize the instance factory

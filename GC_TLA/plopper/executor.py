@@ -209,6 +209,6 @@ class Executor(Configurable):
                     metrics.append(derived_timeout)
         # Unable to evaluate this execution
         if failures > self.retries:
-            print(f"OVERALL FAILED: {run_str}")
+            print(f"OVERALL FAILED: {r_str}")
         return self.produceMetric(metrics)
 

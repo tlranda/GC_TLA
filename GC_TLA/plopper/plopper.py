@@ -4,6 +4,7 @@ import subprocess
 import warnings
 import stat
 import pathlib
+import copy
 # Own library
 from GC_TLA.utils import (Configurable, FindReplaceRegex)
 from GC_TLA.plopper import (Arch, Executor)
@@ -14,7 +15,7 @@ class Plopper(Configurable):
         Also utilizes an executor to evaluate the templated file
     """
     def __init__(self, template, output_dir=None, output_extension='.tmp',
-                 force_write=False, retain_buffer_in_memory=True,
+                 force_write=False, retain_buffer_in_memory=True, base_substitution=None,
                  findReplace=None, executor=None, architecture=None, **kwargs):
         super().__init__()
         self.template = pathlib.Path(template)
@@ -24,6 +25,9 @@ class Plopper(Configurable):
         self.output_extension = output_extension
         self.force_write = force_write
         self.retain_buffer_in_memory = retain_buffer_in_memory
+        if base_substitution is None:
+            base_substitution = dict()
+        self.base_substitution = base_substitution
 
         # Default output_dir to CWD
         if output_dir is None:
@@ -83,6 +87,9 @@ class Plopper(Configurable):
         """
         if self.findReplace is None and not self.force_write:
             return
+        substitutions = copy.deepcopy(self.base_substitution)
+        if lookup_match_substitution is not None:
+            substitutions.update(lookup_match_substitution)
 
         # Ensure buffer exists if not retained
         if not self.retain_buffer_in_memory:
@@ -91,10 +98,9 @@ class Plopper(Configurable):
 
         with open(destination, 'w') as f:
             for line in self.buffer:
-                if self.findReplace is None:
-                    f.write(line)
-                else:
-                    f.write(self.findReplace.findReplace(line, substitution, lookup_match_substitution=lookup_match_substitution))
+                if self.findReplace is not None:
+                    line = self.findReplace.findReplace(line, substitution, lookup_match_substitution=substitutions)
+                f.write(line)
         # Ensure proper permissions on generated files (755)
         os.chmod(destination, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
 
@@ -114,8 +120,6 @@ class Plopper(Configurable):
         template_cmds = self.buildTemplateCmds(destination, *args, **kwargs)
 
         # Indicators that template should be filled in
-        import pdb
-        pdb.set_trace()
         if not use_raw_template and (self.force_write or template_cmds is not None):
             self.fillTemplate(destination, *args, **kwargs)
 

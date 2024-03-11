@@ -137,7 +137,8 @@ class Problem(Configurable):
                 destination = kwargs.pop('destination')
             else:
                 destination = None
-            result = self.plopper.templateExecute(destination, configList, *args, lookup_match_substitution=dict((k,v) for (k,v) in zip(self.tunable_params, configList)), **kwargs)
+            lookup_match_substitution = dict((k,str(v)) for (k,v) in zip(self.tunable_params, configList))
+            result = self.plopper.templateExecute(destination, configList, *args, lookup_match_substitution=lookup_match_substitution, **kwargs)
 
         if not self.silent:
             print(f"Evaluation Result: {config} --> {result}")

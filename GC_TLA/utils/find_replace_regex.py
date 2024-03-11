@@ -17,6 +17,11 @@ class FindReplaceRegex:
     def __init__(self, find, prefix=None, suffix=None, expectPrefixMatch=False, expectSuffixMatch=False):
         if type(find) is str:
             find = (find,)
+            # It is reasonable to only pass one prefix/suffix in this case
+            if prefix is not None and type(prefix[0]) is not tuple:
+                prefix = (prefix,)
+            if suffix is not None and type(suffix[0]) is not tuple:
+                suffix = (suffix,)
         # Reasonable warnings to remove some hard edges on class utilization
         for idx, entry in enumerate(find):
             if '(' not in entry or ')' not in entry:
@@ -24,13 +29,19 @@ class FindReplaceRegex:
             if prefix is not None:
                 if len(prefix) <= idx:
                     raise ValueError(f"No prefix for find-regex #{idx}: {entry}. Each find must have a prefix if prefixes are defined!")
-                elif entry.startswith(prefix[idx]) and not expectPrefixMatch:
-                    warnings.warn(f"Find regex #{idx}, '{entry}', begins with associated prefix, '{prefix[idx]}'. Matching strings will have to take the form '{prefix[idx]}{entry}', which may not meet your expectation (pass expectPrefixMatch=True to supress)", UserWarning)
+                else:
+                    if type(prefix[idx]) is not tuple or len(prefix[idx]) != 2:
+                        raise ValueError(f"Prefix {idx}, '{prefix[idx]}', must be a tuple of two values")
+                    if entry.startswith(prefix[idx][0]) and not expectPrefixMatch:
+                        warnings.warn(f"Find regex #{idx}, '{entry}', begins with associated prefix, '{prefix[idx]}'. Matching strings will have to take the form '{prefix[idx]}{entry}', which may not meet your expectation (pass expectPrefixMatch=True to supress)", UserWarning)
             if suffix is not None:
                 if len(suffix) <= idx:
                     raise ValueError(f"No suffix for find-regex #{idx}: {entry}. Each find must have a suffix if suffixes are defined!")
-                elif entry.startswith(suffix[idx]) and not expectSuffixMatch:
-                    warnings.warn(f"Find regex #{idx}, '{entry}', begins with associated suffix, '{suffix[idx]}'. Matching strings will have to take the form '{suffix[idx]}{entry}', which may not meet your expectation (pass expectSuffixMatch=True to supress)", UserWarning)
+                else:
+                    if type(suffix[idx]) is not tuple or len(suffix[idx]) != 2:
+                        raise ValueError(f"Suffix {idx}, '{suffix[idx]}', must be a tuple of two values")
+                    if entry.startswith(suffix[idx][0]) and not expectSuffixMatch:
+                        warnings.warn(f"Find regex #{idx}, '{entry}', ends with associated suffix, '{suffix[idx]}'. Matching strings will have to take the form '{suffix[idx]}{entry}', which may not meet your expectation (pass expectSuffixMatch=True to supress)", UserWarning)
         self.find = find
         self.nitems = len(self.find)
         REQUIRED_ELEMS = 2*self.nitems
@@ -47,7 +58,7 @@ class FindReplaceRegex:
             if nAttrItems != REQUIRED_ELEMS:
                 raise ValueError(f"{attrName} must have 2-element tuple per element in the find regex list (got {nAttrItems}, needed {REQUIRED_ELEMS})")
             else:
-                self.__setattr__(attrName, passedValue)
+                setattr(self, attrName, passedValue)
 
         # Magic variables that can try to predict common use patterns and ease function paramaterization
         self.iter_idx = None

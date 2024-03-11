@@ -40,21 +40,21 @@ from GC_TLA.problem import RuntimeProblem
 def build_xyz_configuration_space_based_on_arch(x, y, z, arch, seed=None):
     tunable_params = CS(seed=seed)
     parameters = [
-        Categorical(name='p0', choices=["double", "float"], default_value="float"),
-        Constant(name='p1x', value=x),
-        Constant(name='p1y', value=y),
-        Constant(name='p1z', value=z),
+        Categorical(name='P0', choices=["double", "float"], default_value="float"),
+        Constant(name='P1X', value=x),
+        Constant(name='P1Y', value=y),
+        Constant(name='P1Z', value=z),
         # Default ordering changes based on FFT backend impl, detected from architecture GPU Enabled = cuFFT, else FFTW
-        Categorical(name='p2', choices=["-no-reorder", "-reorder"], default_value="-no-reorder" if arch.gpu_enabled else "-reorder"),
-        Categorical(name='p3', choices=["-a2a", "-a2av", "-p2p", "-p2p_pl"], default_value="-a2av"),
-        Categorical(name='p4', choices=["-pencils", "-slabs"], default_value="-pencils"),
-        Categorical(name='p5', choices=["-r2c_dir 0", "-r2c_dir 1","-r2c_dir 2"], default_value="-r2c_dir 0"),
-        Categorical(name='p6', choices=[f"-ingrid {top}" for top in arch.mpi_topologies], default_value=f"-ingrid {arch.default_mpi_topology}"),
-        Categorical(name='p7', choices=[f"-outgrid {top}" for top in arch.mpi_topologies], default_value=f"-outgrid {arch.default_mpi_topology}"),
+        Categorical(name='P2', choices=["-no-reorder", "-reorder"], default_value="-no-reorder" if arch.gpu_enabled else "-reorder"),
+        Categorical(name='P3', choices=["-a2a", "-a2av", "-p2p", "-p2p_pl"], default_value="-a2av"),
+        Categorical(name='P4', choices=["-pencils", "-slabs"], default_value="-pencils"),
+        Categorical(name='P5', choices=["-r2c_dir 0", "-r2c_dir 1","-r2c_dir 2"], default_value="-r2c_dir 0"),
+        Categorical(name='P6', choices=[f"-ingrid {top}" for top in arch.mpi_topologies], default_value=f"-ingrid {arch.default_mpi_topology}"),
+        Categorical(name='P7', choices=[f"-outgrid {top}" for top in arch.mpi_topologies], default_value=f"-outgrid {arch.default_mpi_topology}"),
     ]
     if not arch.gpu_enabled:
-        parameters.append(Ordinal(name='p8', sequence=arch.thread_sequence, default_value=arch.max_thread_depth))
-    parameters.append(Constant(name='c0', value="cufft" if arch.gpu_enabled else "fftw"))
+        parameters.append(Ordinal(name='P8', sequence=arch.thread_sequence, default_value=arch.max_thread_depth))
+    parameters.append(Constant(name='C0', value="cufft" if arch.gpu_enabled else "fftw"))
     tunable_params.add_hyperparameters(parameters)
     return tunable_params
 
@@ -104,18 +104,18 @@ class heFFTeProblemIDMapper(Mapping):
         else:
             raise ValueError("Keys should be tuples or strings")
         if len(fields) != 4:
-            raise KeyError
+            raise KeyError("Did not identify 4 fields (node scale, app scale x3)")
         if fields[0] not in self.NODE_SCALES:
-            raise KeyError
+            raise KeyError(f"Node scale {fields[0]} not in known scales: {self.NODE_SCALES}")
         inverted.append(fields[0])
-        for field in fields[1:]:
+        for idx, field in enumerate(fields[1:]):
             if field in self.APP_SCALES:
                 inverted.append(self.APP_SCALE_NAMES[self.APP_SCALES.index(field)])
             elif field in self.APP_SCALE_NAMES:
                 inverted.append(self.APP_SCALES[self.APP_SCALE_NAMES.index(field)])
             else:
-                raise KeyError
-        return tuple(rval)
+                raise KeyError(f"App scale {idx} ({field}) not in known app scales (as integer: {self.APP_SCALES}) or (as string: {self.APP_SCALE_NAMES})")
+        return tuple(inverted)
 
     def __iter__(self):
         # If you REALLY want them all, I'll let you have it via itertools to be somewhat efficient
@@ -135,9 +135,39 @@ IMPORT_AS='heFFTe'
 
 class heFFTeInstanceFactory(Factory):
     def build(self, name, *args, **kwargs):
-        super().build(name, *new_args, **new_kwargs)
+        # Identify X,Y,Z using mapping
+        size = name.split("_",1)[1]
+        identifier = self.mapping[size]
+        # Name may have been integers, re-invert if so
+        nodes,x,y,z = identifier
+        if type(x) is str:
+            nodes,x,y,z = self.mapping[identifier]
+        new_args = list()
+        if self.arch_factory is None:
+            raise ValueError("Sub-factory for arch was not configured!")
+        new_args.append(self.arch_factory.build(name, x=x, y=y, z=z))
+        tunable_params = build_xyz_configuration_space_based_on_arch(x,y,z,new_args[-1])
+        self._update_from_core(tunable_params=tunable_params)
+        if self.exe_factory is None:
+            raise ValueError("Sub-factory for exe was not configured!")
+        new_args.append(self.exe_factory.build(name))
+        if self.plopper_factory is None:
+            raise ValueError("Sub-factory for plopper was not configured!")
+        # Set GPU AWARE behavior by default
+        if any([size >= 1024 for size in [x,y,z]]):
+            base_substitution = {'GPU_AWARE': '-no-gpu-aware'}
+        else:
+            base_substitution = {'GPU_AWARE': ''}
+        new_args.append(self.plopper_factory.build(name,
+                                                   architecture=new_args[0],
+                                                   executor=new_args[1],
+                                                   base_substitution=base_substitution))
+        new_args.append(tunable_params)
+        # Append mapping identifier from earlier
+        new_args.append(identifier)
+        return super().build(name, *new_args, **kwargs)
 heFFTeInstanceFactory._configure(arch_factory=None, exe_factory=None, plopper_factory=None, mapping=heFFTeProblemID_mapping)
-heFFTE_instance_factory = heFFTeInstanceFactory(RuntimeProblem,
+heFFTe_instance_factory = heFFTeInstanceFactory(RuntimeProblem,
                                                 factory_name=IMPORT_AS,
                                                 initial_configure={'problem_mapping': heFFTeProblemID_mapping},)
 
@@ -211,7 +241,7 @@ class heFFTeArchitecture(Arch):
         self.default_mpi_topology, self.mpi_topologies = self.minSurfaceSplit(x,y,z)
 
         # GPU-enabled flag could be set by user
-        if not self.default_assign('gpu_enabled', gpu_enabled, BOOLEAN_TYPES):
+        if 'gpu_enabled' not in kwargs or not self.default_assign('gpu_enabled', kwargs['gpu_enabled'], BOOLEAN_TYPES):
             self.gpu_enabled = self.gpus > 0
 
 heFFTe_arch_factory = Factory(heFFTeArchitecture)
@@ -251,8 +281,8 @@ class heFFTePlopper(Plopper):
     def buildExecutorCmds(self, outfile, *args, lookup_match_substitution=None, **kwargs):
         format_args = {'self':self, 'outfile':outfile}
         if self.architecture.gpu_enabled:
-            basic_format_string = "mpiexec -n {self.architecture.mpi_ranks} "
-                                  "--ppn {self.architecture.ranks_per_node} "
+            basic_format_string = "mpiexec -n {self.architecture.mpi_ranks} "+\
+                                  "--ppn {self.architecture.ranks_per_node} "+\
                                   "sh ./set_affinity_gpu_polaris.sh {outfile}"
         else:
             # For Theta cluster, but I'm missing the format string with the j argument
@@ -264,12 +294,14 @@ class heFFTePlopper(Plopper):
             #                      "--ppn {self.ranks_per_node} --depth {depth} "
             #                      "--cpu-bind depth --env OMP_NUM_THREADS={depth} "
             #                      "sh {outfile}"
-        return [basic_format_string.format(**format_args)]
+        return ["echo "+basic_format_string.format(**format_args), "echo Performance: 3.14"]
+
+heFFTe_FindReplaceRegex = FindReplaceRegex([r"([CP][0-9]+[XYZ]?)",r"(GPU_AWARE)"],prefix=(("#",""),("#","")))
 
 heFFTe_plopper_factory = Factory(heFFTePlopper,
                                  initial_args=[pathlib.Path('speed3d.sh')],
                                  initial_kwargs={'output_extension': '.sh',
-                                                 'findReplace': FindReplaceRegex(r"([CP][0-9]+[XYZ]?)",prefix=("#","")),
+                                                 'findReplace': heFFTe_FindReplaceRegex,
                                                  'force_write': True,},)
 heFFTe_instance_factory._update_from_core(plopper_factory=heFFTe_plopper_factory)
 
