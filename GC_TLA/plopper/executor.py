@@ -23,7 +23,9 @@ class MetricIDs(enum.Enum):
 
     @classmethod
     def validate_infinity_mapping(cls, metric_dict):
-        # As long as NotOK is available, we're good
+        # As long as OK and NotOK are available, we're good
+        if cls.OK not in metric_dict.keys():
+            return False
         if cls.NotOK in metric_dict.keys():
             return True
         # Else you have to implement all other NotOK enumerations
@@ -46,9 +48,9 @@ class Executor(Configurable):
         self.evaluation_tries = evaluation_tries
         self.retries = retries
         if infinity is None:
-            infinity = {MetricIDs.NotOK: np.inf}
+            infinity = {MetricIDs.OK: 0, MetricIDs.NotOK: np.inf}
         elif not MetricIDs.validate_infinity_mapping(infinity):
-            raise ValueError(f"Supplied infinity mapping '{infinity}' missing NotOK key and one or more specific failure keys")
+            raise ValueError(f"Supplied infinity mapping '{infinity}' may be missing the 'OK' key and/or the 'NotOK' key (latter replaceable with all other failure keys)")
         self.infinity = infinity
         self.ignore_runtime_failure = ignore_runtime_failure
         self.timeout = timeout
@@ -120,10 +122,17 @@ class Executor(Configurable):
         attempt = 0
         while failures <= self.retries and len(metrics) < self.evaluation_tries:
             run_strs = runstr_fn(outfile, attempt, *args, **kwargs)
+            if run_strs is None:
+                # Nothing to do, but also no objective value
+                return self.infinity[MetricIDs.OK]
             env = self.set_os_environ(attempt)
             logged = False
             # This is OK even if outfile is pathlib.Path already
-            logfile = pathlib.Path(outfile)
+            # However, for ephemerals, Nonetype is not OK
+            if outfile is not None:
+                logfile = pathlib.Path(outfile)
+            else:
+                logfile = pathlib.Path("ephemeral_logs")
             # .with_stem only available in Python 3.9+
             logfile = logfile.with_name(f"{logfile.stem}_{attempt}.log")
 

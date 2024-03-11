@@ -11,7 +11,7 @@ from skopt.space import Real
 from sdv.constraints import ScalarRange
 # Own library
 from GC_TLA.utils import (Configurable, ParamSpace, Real, Integer, Categorical, inf)
-from GC_TLA.plopper import (Arch, Executor, OracleExecutor, Plopper)
+from GC_TLA.plopper import (Arch, Executor, OracleExecutor, EphemeralPlopper)
 
 class ProblemReturnMode(enum.Enum):
     ytopt = enum.auto()
@@ -41,7 +41,7 @@ class Problem(Configurable):
         self.architecture = architecture
         assert isinstance(executor, Executor), "Executor must be an instance of GC_TLA Executor"
         self.executor = executor
-        assert isinstance(plopper, Plopper), "Plopper must be an instance of GC_TLA Plopper"
+        assert isinstance(plopper, EphemeralPlopper), "Plopper must be an instance of GC_TLA Plopper or EphemeralPlopper"
         self.plopper = plopper
 
         assert isinstance(tunable_params, CS.ConfigurationSpace), "Tunable Parameters must be an instance of ConfigSpace ConfigurationSpace"
@@ -54,6 +54,8 @@ class Problem(Configurable):
                 self.tuning_space_size *= len(param.sequence)
             elif isinstance(param, CSH.Constant):
                 continue # *= 1
+            elif isinstance(param, CSH.UniformFloatHyperparameter):
+                continue # Theoretically infinite, not counted
             else:
                 warnings.warn(f"Unknown parameter type {type(param)} for parameter {param}",UserWarning)
         self.tunable_params = tunable_params

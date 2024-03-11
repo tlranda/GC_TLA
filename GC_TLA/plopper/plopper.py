@@ -7,27 +7,25 @@ import pathlib
 import copy
 # Own library
 from GC_TLA.utils import (Configurable, FindReplaceRegex)
-from GC_TLA.plopper import (Arch, Executor)
+from GC_TLA.plopper import (Arch, Executor, EphemeralPlopper)
 
-class Plopper(Configurable):
+class Plopper(EphemeralPlopper):
     """
         Class that writes variations of a template file out based on a configuration
         Also utilizes an executor to evaluate the templated file
     """
-    def __init__(self, template, output_dir=None, output_extension='.tmp',
-                 force_write=False, retain_buffer_in_memory=True, base_substitution=None,
-                 findReplace=None, executor=None, architecture=None, **kwargs):
-        super().__init__()
+    def __init__(self, template, *args, output_dir=None, output_extension='.tmp',
+                 retain_buffer_in_memory=True, findReplace=None,
+                 force_write=False, base_substitution=None,
+                 executor=None, architecture=None, **kwargs):
+        super().__init__(*args, force_write=force_write, base_substitution=base_substitution,
+                         executor=executor, architecture=architecture, **kwargs)
         self.template = pathlib.Path(template)
         # While not directly used in the basic Plopper, this attribute is typically useful
         # for subclasses to have at their disposal
         self.template_dir = self.template.parents[0]
         self.output_extension = output_extension
-        self.force_write = force_write
         self.retain_buffer_in_memory = retain_buffer_in_memory
-        if base_substitution is None:
-            base_substitution = dict()
-        self.base_substitution = base_substitution
 
         # Default output_dir to CWD
         if output_dir is None:
@@ -42,28 +40,13 @@ class Plopper(Configurable):
             raise TypeError(f"Type findReplace ({type(findReplace)}) is not a GC_TLA FindReplaceRegex")
         self.findReplace = findReplace
 
-        # Executor must be saved but ensure we can work with it
-        if executor is not None and not isinstance(executor, Executor):
-            raise TypeError(f"Type executor ({type(executor)}) is not a GC_TLA Executor")
-        self.executor = executor
-
-        # Architecture can be passed in, but might not be
-        if architecture is not None and not isinstance(architecture, Arch):
-            raise TypeError(f"Type architecture ({type(architecture)}) is not a GC_TLA Architecture")
-        elif architecture is None:
-            architecture = Arch() # Default system detection
-        self.architecture = architecture
-
         # Load initial buffer contents
         if self.retain_buffer_in_memory:
             with open(self.template,'r') as f:
                 self.buffer = f.readlines()
 
         # Str-able attributes list
-        self.str_attrs = ['template','force_write','output_dir','findReplace','executor']
-
-    def __str__(self):
-        return "Plopper{"+",\n".join([f"{attr}: {getattr(self,attr)}" for attr in self.str_attrs])+"}"
+        self.str_attrs = ['template','output_dir','findReplace']+self.str_attrs
 
     def buildTemplateCmds(self, outfile, *args, **kwargs):
         """
@@ -108,38 +91,10 @@ class Plopper(Configurable):
         if not self.retain_buffer_in_memory:
             del sel.buffer
 
-    def templateExecute(self, destination=None, *args, use_raw_template=False, **kwargs):
+    def setDestination(self, destination=None, use_raw_template=False, *args, **kwargs):
         if use_raw_template:
             destination = self.template
         elif destination is None:
             destination = self.output_dir.joinpath(str(uuid.uuid4())).with_suffix(self.output_extension)
-        # Track last-edited file in case it is useful to know (unit testing, etc)
-        self.previous_destination = destination
-
-        # Produce commands to finalize this template
-        template_cmds = self.buildTemplateCmds(destination, *args, **kwargs)
-
-        # Indicators that template should be filled in
-        if not use_raw_template and (self.force_write or template_cmds is not None):
-            self.fillTemplate(destination, *args, **kwargs)
-
-        # Perform any commands necessary to finalize the template
-        if template_cmds is not None:
-            env = None if self.executor is None else self.executor.set_os_environ(None)
-            for cmd_i, cmd in enumerate(template_cmds):
-                status = subprocess.run(cmd, shell=True, stderr=subprocess.PIPE, env=env)
-                if status.returncode != 0:
-                    print(f"Template Command Failed: {cmd}")
-                    print(status.stderr)
-                    if self.executor is None:
-                        return
-                    else:
-                        return self.executor.unable_to_execute()
-
-        # Use executor to determine metrics of interest
-        if self.executor is None:
-            return
-        else:
-            # Pass buildExecutorCmds as Callable to generate the execution commands
-            return self.executor.execute(destination, self.buildExecutorCmds, *args, **kwargs)
+        return destination
 

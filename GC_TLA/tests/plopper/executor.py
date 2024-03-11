@@ -16,18 +16,22 @@ class Test_MIDs_0_Validation(unittest.TestCase):
         Test that the class function for MetricIDs enum validates when expected and fails to validate when expected
     """
     def test_mids_0_validate_NotOK_Only(self):
-        self.assertTrue(MetricIDs.validate_infinity_mapping({MetricIDs.NotOK: None}))
+        self.assertTrue(MetricIDs.validate_infinity_mapping({MetricIDs.OK: None, MetricIDs.NotOK: None}))
 
     def test_mids_1_validate_all_but_NotOK(self):
-        self.assertTrue(MetricIDs.validate_infinity_mapping({MetricIDs.TimeOut: None,
+        self.assertTrue(MetricIDs.validate_infinity_mapping({MetricIDs.OK: None,
+                                                             MetricIDs.TimeOut: None,
                                                              MetricIDs.BadReturnCode: None,
                                                              MetricIDs.BadParse: None,
                                                              MetricIDs.UnableToExecute: None}))
     def test_mids_2_invalidate_partial_spec(self):
-        self.assertFalse(MetricIDs.validate_infinity_mapping({MetricIDs.TimeOut: None}))
+        self.assertFalse(MetricIDs.validate_infinity_mapping({MetricIDs.OK: None, MetricIDs.TimeOut: None}))
 
     def test_mids_3_invalidate_bogus_spec(self):
         self.assertFalse(MetricIDs.validate_infinity_mapping({'a':'b'}))
+
+    def test_mids_4_invalidate_forgetting_OK(self):
+        self.assertFalse(MetricIDs.validate_infinity_mapping({MetricIDs.NotOK: None}))
 
     # Eventually this validator may warn about unused keys, but for now that is not implemented and not tested
 

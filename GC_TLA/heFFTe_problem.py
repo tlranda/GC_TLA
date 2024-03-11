@@ -93,7 +93,7 @@ class heFFTeProblemIDMapper(Mapping):
         inverted = []
         if type(key) is str:
             converted = []
-            for field in  key.split('_'):
+            for field in key.split('_'):
                 try:
                     converted.append(int(field))
                 except ValueError:
@@ -127,7 +127,7 @@ class heFFTeProblemIDMapper(Mapping):
 
 heFFTeProblemID_mapping = heFFTeProblemIDMapper()
 min_app, max_app = heFFTeProblemID_mapping.app_scale_range
-constraints = [ScalarRange(column_name=f'p1{LETTER}', low_value=min_app, high_value=max_app, strict_boundaries=False) for LETTER in "xyz"]
+constraints = [ScalarRange(column_name=f'P1{LETTER}', low_value=min_app, high_value=max_app, strict_boundaries=False) for LETTER in "XYZ"]
 # Node Scale != Ranks Scale, must be determined later
 #min_ranks, max_ranks = heFFTeProblemID_mapping.node_scale_range
 #constraints.append(ScalarRange(column_name='mpi_ranks', low_value=min_ranks, high_value=max_ranks, strict_boundaries=False))
