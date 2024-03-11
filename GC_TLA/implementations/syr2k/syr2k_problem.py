@@ -134,8 +134,8 @@ syr2k_exe_factory = Syr2kExecutorFactory(Syr2kExecutor,
                                                          'oracle_return_cols': ['objective'],
                                                         },)
 # Define oracles for the factory
-oracles = {f'{IMPORT_AS}_SM': pathlib.Path(__file__).parents[1].joinpath('Data/polybench/syr2k/oracle/all_SM.csv'),
-           f'{IMPORT_AS}_XL': pathlib.Path(__file__).parents[1].joinpath('Data/polybench/syr2k/oracle/all_XL.csv'),
+oracles = {f'{IMPORT_AS}_SM': pathlib.Path(__file__).parents[3].joinpath('Data/polybench/syr2k/oracle/all_SM.csv'),
+           f'{IMPORT_AS}_XL': pathlib.Path(__file__).parents[3].joinpath('Data/polybench/syr2k/oracle/all_XL.csv'),
           }
 syr2k_exe_factory._update_from_core(oracles=oracles)
 syr2k_instance_factory._update_from_core(exe_factory=syr2k_exe_factory)
@@ -169,7 +169,7 @@ syr2k_FindReplaceRegex = FindReplaceRegex(r"(P[0-9]+)", prefix=("#","",))
 
 Syr2kPlopperFactory._configure(import_to_dataset=import_to_dataset)
 syr2k_plopper_factory = Syr2kPlopperFactory(Syr2kPlopper,
-                                            initial_args=[pathlib.Path('mmp.c')],
+                                            initial_args=[pathlib.Path(__file__).parents[0].joinpath('mmp.c')],
                                             initial_kwargs={'output_extension': '.c',
                                                             'findReplace': syr2k_FindReplaceRegex,})
 syr2k_instance_factory._update_from_core(plopper_factory=syr2k_plopper_factory)

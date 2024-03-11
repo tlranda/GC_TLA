@@ -159,8 +159,8 @@ syr2k_exe_factory = Syr2kExecutorFactory(Syr2kExecutor,
                                                          'oracle_return_cols': ['objective'],
                                                         },)
 # Define oracles for the factory
-oracles = {f'{IMPORT_AS}_SM': pathlib.Path(__file__).parents[1].joinpath('Data/polybench/syr2k/oracle/all_SM.csv'),
-           f'{IMPORT_AS}_XL': pathlib.Path(__file__).parents[1].joinpath('Data/polybench/syr2k/oracle/all_XL.csv'),
+oracles = {f'{IMPORT_AS}_SM': pathlib.Path(__file__).parents[3].joinpath('Data/polybench/syr2k/oracle/all_SM.csv'),
+           f'{IMPORT_AS}_XL': pathlib.Path(__file__).parents[3].joinpath('Data/polybench/syr2k/oracle/all_XL.csv'),
           }
 syr2k_exe_factory._update_from_core(oracles=oracles)
 embedded_instance_factory._update_from_core(exe_factory=syr2k_exe_factory)

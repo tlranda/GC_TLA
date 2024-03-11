@@ -299,7 +299,7 @@ class heFFTePlopper(Plopper):
 heFFTe_FindReplaceRegex = FindReplaceRegex([r"([CP][0-9]+[XYZ]?)",r"(GPU_AWARE)"],prefix=(("#",""),("#","")))
 
 heFFTe_plopper_factory = Factory(heFFTePlopper,
-                                 initial_args=[pathlib.Path('speed3d.sh')],
+                                 initial_args=[pathlib.Path(__file__).parents[0].joinpath('speed3d.sh')],
                                  initial_kwargs={'output_extension': '.sh',
                                                  'findReplace': heFFTe_FindReplaceRegex,
                                                  'force_write': True,},)
