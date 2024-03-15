@@ -294,7 +294,9 @@ class heFFTePlopper(Plopper):
             #                      "--ppn {self.ranks_per_node} --depth {depth} "
             #                      "--cpu-bind depth --env OMP_NUM_THREADS={depth} "
             #                      "sh {outfile}"
-        return ["echo "+basic_format_string.format(**format_args), "echo Performance: 3.14"]
+        return [basic_format_string.format(**format_args)]
+        # For debugging on systems without heFFTe setup:
+        #return ["echo "+basic_format_string.format(**format_args), "echo Performance: 3.14"]
 
 heFFTe_FindReplaceRegex = FindReplaceRegex([r"([CP][0-9]+[XYZ]?)",r"(GPU_AWARE)"],prefix=(("#",""),("#","")))
 
