@@ -43,7 +43,7 @@ class Configurable():
             delattr(self,subkey)
 
     def __str__(self):
-        return "FactoryConfigurable("+\
+        return f"{self.__class__.__name__}("+\
                "; ".join([f"{k}:{getattr(self,k)}" for (k) in dir(self) if not k.startswith('_') and not callable(getattr(self,k))])+\
                ")"
 

@@ -98,7 +98,7 @@ class Executor(Configurable):
         """
         return None
 
-    def cleanup(self, outfile, attempt):
+    def cleanup(self, run_strs, outfile, attempt):
         # Perform any post-execution actions to ensure the next execution will be capable of running properly
         return
 
@@ -110,7 +110,7 @@ class Executor(Configurable):
         """
         return last_idx >= len(cmd_queue)-1
 
-    def execute(self, outfile, runstr_fn, *args, **kwargs):
+    def execute(self, outfile, runstr_fn, *args, timeout=None, **kwargs):
         """
         Using outfile and the attempt # (as well as *args, **kwargs),
         runstr_fun() should return a list of subprocess-ready strings to execute
@@ -120,6 +120,8 @@ class Executor(Configurable):
         metrics = []
         failures = 0
         attempt = 0
+        if timeout is None:
+            timeout = self.timeout
         while failures <= self.retries and len(metrics) < self.evaluation_tries:
             run_strs = runstr_fn(outfile, attempt, *args, **kwargs)
             if run_strs is None:
@@ -146,7 +148,7 @@ class Executor(Configurable):
                         execution_status = subprocess.Popen(r_str, shell=True, stdout=logs, stderr=logs, env=env)
                         #child_pid = execution_status.pid
                         try:
-                            execution_status.communicate(timeout=self.timeout)
+                            execution_status.communicate(timeout=timeout)
                         except subprocess.TimeoutExpired:
                             try:
                                 timeouts = True
@@ -168,7 +170,7 @@ class Executor(Configurable):
             logged = self.sufficiently_logged(run_strs, cmd_i, timeouts)
             # Cleanup may be defined between executions
             try:
-                self.cleanup(outfile, attempt)
+                self.cleanup(run_strs, outfile, attempt)
             except Exception as e:
                 # Exceptions should produce warnings, not crash the program unless indicated to be strict
                 if self.strict_cleanup:
