@@ -174,7 +174,8 @@ class heFFTeInstanceFactory(Factory):
         # Append mapping identifier from earlier
         new_args.append(identifier)
         instance = super().build(name, *new_args, **kwargs)
-        # Set flags on instance
+        # Set flags on instance -- should probably be done better
+        instance.silent = True
         return instance
 heFFTeInstanceFactory._configure(arch_factory=None, exe_factory=None, plopper_factory=None, mapping=heFFTeProblemID_mapping)
 heFFTe_instance_factory = heFFTeInstanceFactory(RuntimeProblem,
@@ -314,7 +315,7 @@ class heFFTePlopper(Plopper):
             basic_format_string = "mpiexec -n {self.architecture.mpi_ranks} "+\
                                   "--ppn {self.architecture.ranks_per_node} "
             if nodefile is not None:
-                basic_format_string += "-hostfile {nodefile}"
+                basic_format_string += "-hostfile {nodefile} "
                 format_args['nodefile'] = nodefile
             basic_format_string += "sh ./set_affinity_gpu_polaris.sh {outfile}"
         else:

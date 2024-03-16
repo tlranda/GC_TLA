@@ -183,7 +183,7 @@ class Executor(Configurable):
             if logged and not self.ignore_runtime_failure and execution_status.returncode != 0:
                 # FAILURE
                 failures += 1
-                run_failed = f"FAILED EXECUTION: '{run_str}' -- return code {execution_status.returncode}"
+                run_failed = f"FAILED EXECUTION: '{run_strs}' -- return code {execution_status.returncode}"
                 warnings.warn(run_failed)
                 if MetricIDs.BadReturnCode in self.infinity.keys():
                     metrics.append(self.infinity[MetricIDs.BadReturnCode])
