@@ -231,9 +231,14 @@ class heFFTeArchitecture(Arch):
         # This matches previous version ordering
         return best_grid, list(reversed(topologies))
 
-    def init_derivable(self, **kwargs):
+    def init_derivable(self, workers=1, **kwargs):
         # Do normal stuff first
         super().init_derivable(**kwargs)
+        # We know that we may over-provision nodes so that we can use multiple workers in parallel
+        # This can make the typical mpi_ranks = nodes * ranks_per_node incorrect, it should instead be:
+        self.workers = workers
+        self.mpi_ranks = (self.nodes // self.workers) * self.ranks_per_node
+        self.max_parallel_mpi = self.workers * self.mpi_ranks
 
         # Get the sequence list for # threads per node
         if 'thread_sequence' in kwargs:
