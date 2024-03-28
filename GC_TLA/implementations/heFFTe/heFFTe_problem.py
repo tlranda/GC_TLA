@@ -1,4 +1,5 @@
 import pathlib
+import copy
 from collections.abc import Mapping
 from itertools import product as itertools_product
 from math import ceil as math_ceil
@@ -130,10 +131,8 @@ class heFFTeProblemIDMapper(Mapping):
 
 heFFTeProblemID_mapping = heFFTeProblemIDMapper()
 min_app, max_app = heFFTeProblemID_mapping.app_scale_range
-constraints = [ScalarRange(column_name=f'P1{LETTER}', low_value=min_app, high_value=max_app, strict_boundaries=False) for LETTER in "XYZ"]
 # Node Scale != Ranks Scale, must be determined later
-#min_ranks, max_ranks = heFFTeProblemID_mapping.node_scale_range
-#constraints.append(ScalarRange(column_name='mpi_ranks', low_value=min_ranks, high_value=max_ranks, strict_boundaries=False))
+basic_constraints = [ScalarRange(column_name=f'P1{LETTER}', low_value=min_app, high_value=max_app, strict_boundaries=False) for LETTER in "XYZ"]
 IMPORT_AS='heFFTe'
 
 class heFFTeInstanceFactory(Factory):
@@ -155,7 +154,13 @@ class heFFTeInstanceFactory(Factory):
                 raise ValueError("Sub-factory for arch was not configured!")
             new_args.append(self.arch_factory.build(name, x=x, y=y, z=z))
         tunable_params = build_xyz_configuration_space_based_on_arch(x,y,z,new_args[-1])
-        self._update_from_core(tunable_params=tunable_params)
+        constraints = copy.deepcopy(self.basic_constraints)
+        (min_nodes, max_nodes) = self.mapping.node_scale_range
+        constraints.append(ScalarRange(column_name='mpi_ranks',
+                                       low_value=new_args[-1].ranks_per_node*min_nodes,
+                                       high_value=new_args[-1].ranks_per_node*max_nodes,
+                                       strict_boundaries=False))
+        #self._update_from_core(tunable_params=tunable_params, silent=True, constraints=constraints)
         if self.exe_factory is None:
             raise ValueError("Sub-factory for exe was not configured!")
         new_args.append(self.exe_factory.build(name))
@@ -176,8 +181,10 @@ class heFFTeInstanceFactory(Factory):
         instance = super().build(name, *new_args, **kwargs)
         # Set flags on instance -- should probably be done better
         instance.silent = True
+        instance.constraints = constraints
         return instance
-heFFTeInstanceFactory._configure(arch_factory=None, exe_factory=None, plopper_factory=None, mapping=heFFTeProblemID_mapping)
+heFFTeInstanceFactory._configure(arch_factory=None, exe_factory=None, plopper_factory=None,
+                                 mapping=heFFTeProblemID_mapping, basic_constraints=basic_constraints)
 heFFTe_instance_factory = heFFTeInstanceFactory(RuntimeProblem,
                                                 factory_name=IMPORT_AS,
                                                 initial_configure={'problem_mapping': heFFTeProblemID_mapping},)
