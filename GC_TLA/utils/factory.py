@@ -94,5 +94,6 @@ class Factory(Configurable):
         (buildable, args, kwargs) = self.handles(name)
         if buildable:
             return self.build(name, *args, **kwargs)
-        return
+        # Name not found
+        raise AttributeError
 
