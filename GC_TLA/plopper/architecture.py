@@ -175,7 +175,7 @@ class Architecture(Configurable):
         self.set_comparable()
 
     def __str__(self):
-        return f"Architecture[{self.machine_identifier}]:"+"{"+", ".join([f"{k}: {getattr(self,k)}" for k in self.comparable])+"}"
+        return f"{self.__class__.__name__}[{self.machine_identifier}]:"+"{"+", ".join([f"{k}: {getattr(self,k)}" for k in self.comparable])+"}"
 
     def __eq__(self, other):
         if not isinstance(other, Architecture):

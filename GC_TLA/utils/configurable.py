@@ -43,7 +43,19 @@ class Configurable():
             delattr(self,subkey)
 
     def __str__(self):
-        return "FactoryConfigurable("+\
-               "; ".join([f"{k}:{getattr(self,k)}" for (k) in dir(self) if not k.startswith('_') and not callable(getattr(self,k))])+\
-               ")"
+        self_str= f"{self.__class__.__name__}("
+        attrs = []
+        for k in dir(self):
+            if k.startswith('_') or callable(getattr(self,k)):
+                continue
+            v = getattr(self,k)
+            # Doing this to avoid pandas dependency in this file, may or may not be a good idea
+            if v.__class__.__module__ == 'pandas.core.frame' and v.__class__.__name__ == 'DataFrame':
+                attr_repr = f"{k}:pandas.DataFrame({len(v)} entries with {len(v.columns)} columns)"
+            else:
+                attr_repr = f"{k}:{v}"
+            attrs.append(attr_repr)
+        self_str += "; ".join(attrs)
+        self_str += ")"
+        return self_str
 

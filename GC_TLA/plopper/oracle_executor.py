@@ -44,8 +44,8 @@ class OracleExecutor(Executor):
             raise ValueError("Not initialized with an oracle! Only able to operate as standard executor!")
         if type(search) is not tuple:
             search = tuple(search)
-        n_matching_columns = (self.oracle_matching == search).sum(1)
-        full_match_idx = np.nonzero(n_matching_columns == self.oracl_match_n)[0]
+        n_matching_columns = (self.oracle_matching == search).to_numpy().sum(1)
+        full_match_idx = np.nonzero(n_matching_columns == self.oracle_match_n)[0]
         if len(full_match_idx) == 0:
             raise ValueError(f"No complete matches for {search} in oracle {self.oracle}")
         if as_rank:
