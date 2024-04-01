@@ -24,10 +24,19 @@ class EphemeralPlopper(Configurable):
         self.architecture = architecture
 
         # Str-able attributes list
-        self.str_attrs = ['force_write']
+        self.str_attrs = ['force_write', 'executor', 'architecture']
+        self.str_objs = ['force_write']
 
     def __str__(self):
-        return f"{self.__class__.__name__}"+"{"+",\n".join([f"{attr}: {getattr(self,attr)}" for attr in self.str_attrs])+"}"
+        rstring = f"{self.__class__.__name__}"+"{"
+        str_attrs = []
+        for attr in self.str_attrs:
+            if attr in self.str_objs:
+                str_attrs.append(f"{attr}: {getattr(self,attr)}")
+            else:
+                str_attrs.append(f"{attr}: {getattr(self,attr).__repr__()}")
+        rstring += ",\n".join(str_attrs)+"}"
+        return rstring
 
     def buildTemplateCmds(self, outfile, *args, **kwargs):
         """

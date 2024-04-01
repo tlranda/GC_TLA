@@ -8,7 +8,6 @@ import pandas as pd
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
 from skopt.space import Real
-from sdv.constraints import ScalarRange
 # Own library
 from GC_TLA.utils import (Configurable, ParamSpace, Real, Integer, Categorical, inf)
 from GC_TLA.plopper import (Arch, Executor, OracleExecutor, EphemeralPlopper)

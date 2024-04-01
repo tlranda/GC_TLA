@@ -15,6 +15,7 @@ class Plopper(EphemeralPlopper):
         Also utilizes an executor to evaluate the templated file
     """
     def __init__(self, template, *args, output_dir=None, output_extension='.tmp',
+                 touch_output_dir=True,
                  retain_buffer_in_memory=True, findReplace=None,
                  force_write=False, base_substitution=None,
                  executor=None, architecture=None, **kwargs):
@@ -32,8 +33,9 @@ class Plopper(EphemeralPlopper):
             output_dir = pathlib.Path(".").resolve()
         # Shelter any generated files from cluttering outputdir's top level
         self.output_dir = pathlib.Path(output_dir).joinpath('tmp_files')
-        # Ensure the path is valid
-        self.output_dir.mkdir(exist_ok=True)
+        if touch_output_dir:
+            # Ensure the path is valid
+            self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Ensure we can work with the provided substitution object
         if findReplace is not None and not isinstance(findReplace, FindReplaceRegex):
@@ -47,20 +49,7 @@ class Plopper(EphemeralPlopper):
 
         # Str-able attributes list
         self.str_attrs = ['template','output_dir','findReplace']+self.str_attrs
-
-    def buildTemplateCmds(self, outfile, *args, **kwargs):
-        """
-            Return None to skip executing any commands after templating a file
-            Otherwise, return a list of string commands to execute via the Python3 subprocess library
-        """
-        return None
-
-    def buildExecutorCmds(self, outfile, *args, **kwargs):
-        """
-            Return None to skip executing any commands after templating a file
-            Otherwise, return a list of string commands to execute for evaluation via Executor instance
-        """
-        return None
+        self.str_objs = ['template','output_dir','findReplace']+self.str_objs
 
     def fillTemplate(self, destination, substitution="", *args, lookup_match_substitution=None, **kwargs):
         """
@@ -91,10 +80,15 @@ class Plopper(EphemeralPlopper):
         if not self.retain_buffer_in_memory:
             del sel.buffer
 
-    def setDestination(self, destination=None, use_raw_template=False, *args, **kwargs):
+    def setDestination(self, destination=None, use_raw_template=False, *args, output_dir=None, **kwargs):
         if use_raw_template:
             destination = self.template
         elif destination is None:
-            destination = self.output_dir.joinpath(str(uuid.uuid4())).with_suffix(self.output_extension)
+            if output_dir is None:
+                output_dir = self.output_dir
+            else:
+                output_dir = pathlib.Path(output_dir)
+                output_dir.mkdir(parents=True, exist_ok=True)
+            destination = output_dir.joinpath(str(uuid.uuid4())).with_suffix(self.output_extension)
         return destination
 

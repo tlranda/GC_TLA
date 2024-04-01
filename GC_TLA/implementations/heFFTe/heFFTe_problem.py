@@ -1,4 +1,5 @@
 import pathlib
+import copy
 from collections.abc import Mapping
 from itertools import product as itertools_product
 from math import ceil as math_ceil
@@ -39,8 +40,11 @@ from GC_TLA.problem import RuntimeProblem
 # Hyperparameters for heFFTe Search are based upon the given FFT dims XYZ and detected architecture
 def build_xyz_configuration_space_based_on_arch(x, y, z, arch, seed=None):
     tunable_params = CS(seed=seed)
+    precisions = ["double", "float"]
+    if max([x,y,z]) >= 1024:
+        precisions = [p+"-long" for p in precisions]
     parameters = [
-        Categorical(name='P0', choices=["double", "float"], default_value="float"),
+        Categorical(name='P0', choices=precisions, default_value=precisions[0]),
         Constant(name='P1X', value=x),
         Constant(name='P1Y', value=y),
         Constant(name='P1Z', value=z),
@@ -127,10 +131,8 @@ class heFFTeProblemIDMapper(Mapping):
 
 heFFTeProblemID_mapping = heFFTeProblemIDMapper()
 min_app, max_app = heFFTeProblemID_mapping.app_scale_range
-constraints = [ScalarRange(column_name=f'P1{LETTER}', low_value=min_app, high_value=max_app, strict_boundaries=False) for LETTER in "XYZ"]
 # Node Scale != Ranks Scale, must be determined later
-#min_ranks, max_ranks = heFFTeProblemID_mapping.node_scale_range
-#constraints.append(ScalarRange(column_name='mpi_ranks', low_value=min_ranks, high_value=max_ranks, strict_boundaries=False))
+basic_constraints = [ScalarRange(column_name=f'P1{LETTER}', low_value=min_app, high_value=max_app, strict_boundaries=False) for LETTER in "XYZ"]
 IMPORT_AS='heFFTe'
 
 class heFFTeInstanceFactory(Factory):
@@ -143,11 +145,22 @@ class heFFTeInstanceFactory(Factory):
         if type(x) is str:
             nodes,x,y,z = self.mapping[identifier]
         new_args = list()
-        if self.arch_factory is None:
-            raise ValueError("Sub-factory for arch was not configured!")
-        new_args.append(self.arch_factory.build(name, x=x, y=y, z=z))
+        if 'architecture' in kwargs.keys():
+            new_args.append(kwargs['architecture'])
+            # Prevent issue in propagation
+            del kwargs['architecture']
+        else:
+            if self.arch_factory is None:
+                raise ValueError("Sub-factory for arch was not configured!")
+            new_args.append(self.arch_factory.build(name, x=x, y=y, z=z))
         tunable_params = build_xyz_configuration_space_based_on_arch(x,y,z,new_args[-1])
-        self._update_from_core(tunable_params=tunable_params)
+        constraints = copy.deepcopy(self.basic_constraints)
+        (min_nodes, max_nodes) = self.mapping.node_scale_range
+        constraints.append(ScalarRange(column_name='mpi_ranks',
+                                       low_value=new_args[-1].ranks_per_node*min_nodes,
+                                       high_value=new_args[-1].ranks_per_node*max_nodes,
+                                       strict_boundaries=False))
+        #self._update_from_core(tunable_params=tunable_params, silent=True, constraints=constraints)
         if self.exe_factory is None:
             raise ValueError("Sub-factory for exe was not configured!")
         new_args.append(self.exe_factory.build(name))
@@ -165,15 +178,21 @@ class heFFTeInstanceFactory(Factory):
         new_args.append(tunable_params)
         # Append mapping identifier from earlier
         new_args.append(identifier)
-        return super().build(name, *new_args, **kwargs)
-heFFTeInstanceFactory._configure(arch_factory=None, exe_factory=None, plopper_factory=None, mapping=heFFTeProblemID_mapping)
+        instance = super().build(name, *new_args, **kwargs)
+        # Set flags on instance -- should probably be done better
+        instance.silent = True
+        instance.constraints = constraints
+        return instance
+heFFTeInstanceFactory._configure(arch_factory=None, exe_factory=None, plopper_factory=None,
+                                 mapping=heFFTeProblemID_mapping, basic_constraints=basic_constraints)
 heFFTe_instance_factory = heFFTeInstanceFactory(RuntimeProblem,
                                                 factory_name=IMPORT_AS,
                                                 initial_configure={'problem_mapping': heFFTeProblemID_mapping},)
 
 class heFFTeArchitecture(Arch):
-    def make_thread_sequence(self):
-        max_depth = self.threads_per_node // self.ranks_per_node
+    @staticmethod
+    def make_thread_sequence(threads_per_node, ranks_per_node):
+        max_depth = threads_per_node // ranks_per_node
         sequence = [2**_ for _ in range(1,10) if (2**_) <= max_depth]
         if len(sequence) >= 2:
             intermediates = []
@@ -219,14 +238,19 @@ class heFFTeArchitecture(Arch):
         # This matches previous version ordering
         return best_grid, list(reversed(topologies))
 
-    def init_derivable(self, **kwargs):
+    def init_derivable(self, workers=1, **kwargs):
         # Do normal stuff first
         super().init_derivable(**kwargs)
+        # We know that we may over-provision nodes so that we can use multiple workers in parallel
+        # This can make the typical mpi_ranks = nodes * ranks_per_node incorrect, it should instead be:
+        self.workers = workers
+        self.mpi_ranks = (self.nodes // self.workers) * self.ranks_per_node
+        self.max_parallel_mpi = self.workers * self.mpi_ranks
 
         # Get the sequence list for # threads per node
         if 'thread_sequence' in kwargs:
             raise ValueError("Thread sequence is derived from threads_per_node and ranks_per_node")
-        self.max_thread_depth, self.thread_sequence = self.make_thread_sequence()
+        self.max_thread_depth, self.thread_sequence = self.make_thread_sequence(self.threads_per_node, self.ranks_per_node)
 
         # Get MPI topology options for given number of ranks per node
         if 'mpi_topologies' in kwargs:
@@ -272,18 +296,40 @@ class heFFTeExecutor(Executor):
         # Maximum detected error
         return sorted_metrics[-1]
 
+    def cleanup(self, run_strs, outfile, attempt):
+        expected_cleanup_script = pathlib.Path('gpu_cleanup.sh')
+        hostfile = None
+        n_nodes = None
+        for r_str in run_strs:
+            if '--hostfile' in r_str:
+                r_str = r_str.split()
+                hostfile = r_str[r_str.index('--hostfile')+1]
+                if pathlib.Path(hostfile).exists():
+                    with open(hostfile,'r') as f:
+                        n_nodes = len([_ for _ in f.readlines()])
+                break
+        # Only execute this portion if everything was identified
+        if hostfile is not None and n_nodes is not None and expected_cleanup_script.exists():
+            cleanup_cmd = f"mpiexec -n {n_nodes} --ppn 1 --hostfile {hostfile} ./{expected_cleanup_script} speed3d_r2c"
+            proc = subprocess.run(cleanup_cmd, shell=True)
+            if proc.returncode != 0:
+                raise ValueError(f"GPU Cleanup failed with code: {proc.returncode}")
+
 heFFTe_exe_factory = Factory(heFFTeExecutor)
 heFFTe_instance_factory._update_from_core(exe_factory=heFFTe_exe_factory)
 
 class heFFTePlopper(Plopper):
     # There are no compilation steps, but ensure that the template is always filled by passing
     # force_write=True at construction
-    def buildExecutorCmds(self, outfile, *args, lookup_match_substitution=None, **kwargs):
+    def buildExecutorCmds(self, outfile, *args, lookup_match_substitution=None, nodefile=None, **kwargs):
         format_args = {'self':self, 'outfile':outfile}
         if self.architecture.gpu_enabled:
             basic_format_string = "mpiexec -n {self.architecture.mpi_ranks} "+\
-                                  "--ppn {self.architecture.ranks_per_node} "+\
-                                  "sh ./set_affinity_gpu_polaris.sh {outfile}"
+                                  "--ppn {self.architecture.ranks_per_node} "
+            if nodefile is not None:
+                basic_format_string += "-hostfile {nodefile} "
+                format_args['nodefile'] = nodefile
+            basic_format_string += "sh ./set_affinity_gpu_polaris.sh {outfile}"
         else:
             # For Theta cluster, but I'm missing the format string with the j argument
             raise ValueError("Not Fully Implemented")
@@ -294,13 +340,16 @@ class heFFTePlopper(Plopper):
             #                      "--ppn {self.ranks_per_node} --depth {depth} "
             #                      "--cpu-bind depth --env OMP_NUM_THREADS={depth} "
             #                      "sh {outfile}"
-        return ["echo "+basic_format_string.format(**format_args), "echo Performance: 3.14"]
+        return [basic_format_string.format(**format_args)]
+        # For debugging on systems without heFFTe setup:
+        #return ["echo "+basic_format_string.format(**format_args), "echo Performance: 3.14"]
 
 heFFTe_FindReplaceRegex = FindReplaceRegex([r"([CP][0-9]+[XYZ]?)",r"(GPU_AWARE)"],prefix=(("#",""),("#","")))
 
 heFFTe_plopper_factory = Factory(heFFTePlopper,
                                  initial_args=[pathlib.Path(__file__).parents[0].joinpath('speed3d.sh')],
                                  initial_kwargs={'output_extension': '.sh',
+                                                 'touch_output_dir': False,
                                                  'findReplace': heFFTe_FindReplaceRegex,
                                                  'force_write': True,},)
 heFFTe_instance_factory._update_from_core(plopper_factory=heFFTe_plopper_factory)
