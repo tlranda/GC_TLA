@@ -1,5 +1,6 @@
 import pathlib
 from collections.abc import Mapping
+import time
 # Dependent modules
 from ConfigSpace import ConfigurationSpace as CS
 from ConfigSpace.hyperparameters import (CategoricalHyperparameter as Categorical, OrdinalHyperparameter as Ordinal, UniformFloatHyperparameter as UniformFloat)
@@ -8,7 +9,7 @@ import numpy as np
 # Own library
 from GC_TLA.utils import (Factory, FindReplaceRegex)
 from GC_TLA.plopper import (Arch, Executor, OracleExecutor, EphemeralPlopper)
-from GC_TLA.problem import RuntimeProblem
+from GC_TLA.problem import (RuntimeProblem, ProblemReturnMode)
 
 def build_configuration_space_based_on_embedding_size(n, seed=None):
     tunable_params = CS(seed=seed)
@@ -110,8 +111,55 @@ class EmbeddedInstanceFactory(Factory):
         new_args.append(identifier)
         return super().build(name, *new_args, **kwargs)
 
+# Have to drop configurations from the list if they look like 'emb_dim_#'
+class EmbeddedProblem(RuntimeProblem):
+    def evaluateConfiguration(self, config, *args, **kwargs):
+        configList = [config[param] for param in self.tunable_params if not param.startswith('emb_dim_')]
+        # Ensure any omitted values are injected into kwargs
+        omitted_configuration = set(config.keys()).difference(self.tunable_param_set)
+        kwargs['dropped_config_params'] = dict((k,config[k]) for k in omitted_configuration)
+
+        if not self.silent:
+            print(f"Evaluate Configuration: {config}")
+
+        # Ensure starting time is set
+        if self.start_time is None:
+            self.start_time = time.time()
+
+        # Use oracle evaluation only when proper class/subclass and use_oracle=True passed in
+        if isinstance(self.executor, OracleExecutor) and \
+            self.executor.as_oracle==True and \
+            'use_oracle' in kwargs and \
+            kwargs['use_oracle']==True:
+            # CIRCUMVENT plopper to directly interact with OracleExecutor
+            # Passes along as_rank=True, single_return=True, etc when present (along with other items a subclass may require)
+            result = self.executor.oracleSearch(configList, *args, **kwargs)
+        else:
+            # Passes along use_raw_template and other items a subclass may require
+            # But strip destination if present
+            if 'destination' in kwargs.keys():
+                destination = kwargs.pop('destination')
+            else:
+                destination = None
+            lookup_match_substitution = dict((k,str(v)) for (k,v) in zip(self.tunable_params, configList))
+            result = self.plopper.templateExecute(destination, configList, *args, lookup_match_substitution=lookup_match_substitution, **kwargs)
+
+        if not self.silent:
+            print(f"Evaluation Result: {config} --> {result}")
+
+        if self.logfile is not None:
+            self._log(configList, result)
+
+        if self.returnmode == ProblemReturnMode.ytopt:
+            return result
+        elif self.returnmode == ProblemReturnMode.gptune:
+            return [result]
+        else:
+            raise ValueError(f"Return mode {self.returnmode} not implemented!")
+
+
 EmbeddedInstanceFactory._configure(mapping=embeddedProblemID_mapping)
-embedded_instance_factory = EmbeddedInstanceFactory(RuntimeProblem,
+embedded_instance_factory = EmbeddedInstanceFactory(EmbeddedProblem,
                                                     factory_name=IMPORT_AS,
                                                     initial_configure={'constraints': constraints,
                                                     'problem_mapping': embeddedProblemID_mapping,
