@@ -154,13 +154,13 @@ class heFFTeInstanceFactory(Factory):
                 raise ValueError("Sub-factory for arch was not configured!")
             new_args.append(self.arch_factory.build(name, x=x, y=y, z=z))
         tunable_params = build_xyz_configuration_space_based_on_arch(x,y,z,new_args[-1])
+        #self._update_from_core(tunable_params=tunable_params)
         constraints = copy.deepcopy(self.basic_constraints)
         (min_nodes, max_nodes) = self.mapping.node_scale_range
         constraints.append(ScalarRange(column_name='mpi_ranks',
                                        low_value=new_args[-1].ranks_per_node*min_nodes,
                                        high_value=new_args[-1].ranks_per_node*max_nodes,
                                        strict_boundaries=False))
-        #self._update_from_core(tunable_params=tunable_params, silent=True, constraints=constraints)
         if self.exe_factory is None:
             raise ValueError("Sub-factory for exe was not configured!")
         new_args.append(self.exe_factory.build(name))
