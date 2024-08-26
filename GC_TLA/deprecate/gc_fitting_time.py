@@ -11,32 +11,44 @@ import warnings
 # Command line interface with --help explanations
 def build():
     prs = argparse.ArgumentParser()
-    prs.add_argument('--model', choices=['GaussianCopula','GPTune'], default='GaussianCopula', help="Model to measure")
-    prs.add_argument('--n-data', type=int, default=100, help="Number of simulated rows of fitting data")
-    prs.add_argument('--max-power', type=int, default=3, help="Largest power of variables to attempt fitting (base 10)")
+    prs.add_argument('--model', choices=['GaussianCopula','GPTune'], default='GaussianCopula', help="Model to measure (default: %(default)s)")
+    prs.add_argument('--n-data', type=int, default=100, help="Number of simulated rows of fitting data (default: %(default)s)")
+    prs.add_argument('--max-power', type=int, default=3, help="Largest power of variables to attempt fitting (base 10) (default: %(default)s)")
     prs.add_argument('--powers', type=int, nargs="*", action='append', help="Explicit power list (supercedes --max-power when specified)")
-    prs.add_argument('--field-type', choices=['float', 'categorical',],  default='float', help="Treat data as this kind of fittable variable")
-    prs.add_argument('--seed', type=int, default=1234, help="Set RNG seeds")
+    prs.add_argument('--field-type', choices=['float', 'categorical',],  default='float', help="Treat data as this kind of fittable variable (default: %(default)s)")
+    prs.add_argument('--seed', type=int, default=1234, help="Set RNG seeds (default: %(default)s)")
+    prs.add_argument('--n-inference', type=int, default=None, action='append', nargs='*', help="Number of inferences to time (default: %(default)s)")
     return prs
 
 # Adjustments to parsed args
 def parse(prs, args=None):
     if args is None:
         args = prs.parse_args()
+    if args.powers is not None:
+        if len(args.powers) == 0:
+            args.powers = [_ for _ in range(args.max_power)]
+        elif len(args.powers[0]) > 0: # TODO fix argparse so this isn't a double-nested list
+            args.powers = args.powers[0]
+    if args.n_inference is None:
+        args.n_infernece = []
+    elif len(args.n_inference) == 1:
+        args.n_inference = args.n_inference[0]
     # Used as a range, ergo +1 to ensure maximum power is represented
     args.max_power += 1
     # Replace experiment with function call
     args.experiment = globals()[f'experiment_{args.model}']
-    if len(args.powers[0]) > 0:
-        args.powers = args.powers[0]
-    else:
-        args.powers = None
+    # Replace type string indicator with actual type
+    if args.field_type == 'float':
+        args.field_type = float
+    elif args.field_type == 'categorical':
+        args.field_type = str
     return args
 
 def experiment_GaussianCopula(args):
     # Define all experiment powers as same # rows but increasing # of variables
     import sdv
-    from sdv.tabular import GaussianCopula
+    from sdv.metadata import SingleTableMetadata
+    from sdv.single_table import GaussianCopulaSynthesizer
     if args.powers is None:
         experiments = [(args.n_data, 10**power) for power in range(args.max_power)]
     else:
@@ -44,11 +56,12 @@ def experiment_GaussianCopula(args):
     fitting_times = []
     for (M,N) in experiments:
         names = [str(_) for _ in range(N)]
-        transformers = dict((k,args.field_type) for k in names)
-        data = pd.DataFrame(dict((k, np.random.randn(M)) for k in names))
+        data = pd.DataFrame(dict((k, np.random.randn(M)) for k in names),
+                            dtype=args.field_type)
+        metadata = SingleTableMetadata()
+        metadata.detect_from_dataframe(data)
         # FRESH model
-        model = GaussianCopula(field_names=names,
-                               field_transformers=transformers)
+        model = GaussianCopulaSynthesizer(metadata, enforce_min_max_values=False)
         # Time fitting and reduce output -- we aren't using these models so
         # simple warnings can generally be ignored
         warnings.simplefilter("ignore")
@@ -58,8 +71,13 @@ def experiment_GaussianCopula(args):
         warnings.simplefilter("default")
         fitting_times.append(time_stop-time_start)
         print(f"Fit {M} rows of {args.field_type} data with {N} variables in {fitting_times[-1]} seconds")
+        for n in args.n_inference:
+            start = time()
+            model.sample(n)
+            end = time()
+            print(f"Performed {n} samples in {end-start} seconds")
     # In case something ever interacts with outputs, may be nice to provide key returnables
-    return fitting_times, experiments
+    return fitting_times, experiments, model
 
 def experiment_GPTune(args):
     from autotune.space import Space, Integer, Real
@@ -196,10 +214,11 @@ def experiment_GPTune(args):
         model_functions[size] = BuildSurrogateModel(metadata_path=None,
                                                     metadata=surrogate_metadata,
                                                     function_evaluations=data['func_eval'])
+    return None, None, None
 
 def main(args):
     np.random.seed(args.seed)
-    args.experiment(args)
+    fitting_times, experiments, model = args.experiment(args)
 
 if __name__ == '__main__':
     main(parse(build()))
