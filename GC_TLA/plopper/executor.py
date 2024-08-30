@@ -20,6 +20,7 @@ class MetricIDs(enum.Enum):
     BadReturnCode = enum.auto() # Metric unavailable due to bad return code
     BadParse = enum.auto() # Metric unavailable due to failure in metric parsing
     UnableToExecute = enum.auto() # Metric unavailable due to failure PRIOR to execution (compilation error, etc)
+    InvalidConfiguration = enum.auto() # Metric unavailable due to misconfiguration or missing configuration
 
     @classmethod
     def validate_infinity_mapping(cls, metric_dict):

@@ -9,7 +9,7 @@ class OracleExecutor(Executor):
     """
         When evaluation results are already known, can utilize an OracleEvaluator to look up values in oracleSearch()
     """
-    def __init__(self, oracle_path=None, oracle_sort_keys=None, oracle_match_cols=None, oracle_return_cols=None,
+    def __init__(self, oracle_path=None, oracle_sort_keys=None, oracle_match_cols=None, oracle_return_cols=None, oracle_exhaustive=True,
                  # Settings for parent class
                  evaluation_tries=1, retries=0, infinity=None,
                  ignore_runtime_failures=False, timeout=None, strict_cleanup=False):
@@ -18,6 +18,7 @@ class OracleExecutor(Executor):
         if oracle_path is None:
             self.as_oracle = False
             return
+        self.oracle_exhaustive = oracle_exhaustive
         self.as_oracle = True
         self.oracle = pathlib.Path(oracle_path)
         self.oracle_data = pd.read_csv(self.oracle)
@@ -47,7 +48,14 @@ class OracleExecutor(Executor):
         n_matching_columns = (self.oracle_matching == search).to_numpy().sum(1)
         full_match_idx = np.nonzero(n_matching_columns == self.oracle_match_n)[0]
         if len(full_match_idx) == 0:
-            raise ValueError(f"No complete matches for {search} in oracle {self.oracle}")
+            if self.oracle_exhaustive:
+                raise ValueError(f"No complete matches for {search} in oracle {self.oracle}")
+            else:
+                # Omission from oracle means a failed configuration
+                if MetricIDs.InvalidConfiguration in self.infinity:
+                    return self.infinity[MetricIDs.InvalidConfiguration]
+                else:
+                    return self.infinity[MetricIDs.NotOK]
         if as_rank:
             if single_return:
                 return full_match_idx[0]
@@ -56,5 +64,5 @@ class OracleExecutor(Executor):
         if single_return:
             return self.produceMetric(self.oracle_data.loc[full_match_idx[0], self.oracle_return_cols].values)
         else:
-            return self.produceMetric(self.oracle_data.loc[full_match_idx, self.oracle_return_cols])
+            return self.produceMetric(self.oracle_data.loc[full_match_idx, self.oracle_return_cols].values)
 
