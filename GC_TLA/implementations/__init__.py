@@ -1,6 +1,8 @@
+import importlib
 import pathlib
 # Crawl subdirectories (that don't start with '.' or '_') as importable submodules
-implemented = [_.name for _ in pathlib.Path(__file__).parents[0].iterdir() if _.is_dir() and not (_.name.startswith('.') or _.name.startswith('_'))]
+implemented = sorted([_.name for _ in pathlib.Path(__file__).parents[0].iterdir() if _.is_dir() and not (_.name.startswith('.') or _.name.startswith('_'))],
+                     reverse=True)
 del pathlib
 __all__ = implemented
 
@@ -11,12 +13,12 @@ def __getattr__(name):
         # abcdef (matching substrings problem + order of the implemented list)
         if not name.startswith(impl):
             continue
-        import importlib
-        module = importlib.import_module('.'+impl, 'GC_TLA.implementations')
         if name == impl:
+            module = importlib.import_module('.'+impl, 'GC_TLA.implementations')
             return module
         else:
             try:
+                module = importlib.import_module('.'+impl, 'GC_TLA.implementations')
                 return getattr(module, name)
             except Exception as e:
                 # When debugging, rather than Attribute Error you probably want to re-raise the exception
