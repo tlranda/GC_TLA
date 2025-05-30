@@ -41,6 +41,7 @@ from GC_TLA.problem import RuntimeProblem
 def build_xyz_configuration_space_based_on_arch(x, y, z, arch, seed=None):
     tunable_params = CS(seed=seed)
     precisions = ["double", "float"]
+    n_dimensions = sum([dim > 1 for dim in [x,y,z]])
     if max([x,y,z]) >= 1024:
         precisions = [p+"-long" for p in precisions]
     parameters = [
@@ -48,10 +49,22 @@ def build_xyz_configuration_space_based_on_arch(x, y, z, arch, seed=None):
         Constant(name='P1X', value=x),
         Constant(name='P1Y', value=y),
         Constant(name='P1Z', value=z),
+    ]
+    if n_dimensions >= 2:
         # Default ordering changes based on FFT backend impl, detected from architecture GPU Enabled = cuFFT, else FFTW
-        Categorical(name='P2', choices=["-no-reorder", "-reorder"], default_value="-no-reorder" if arch.gpu_enabled else "-reorder"),
+        parameters += [
+            Categorical(name='P2', choices=["-no-reorder", "-reorder"], default_value="-no-reorder" if arch.gpu_enabled else "-reorder"),
+        ]
+    parameters += [
         Categorical(name='P3', choices=["-a2a", "-a2av", "-p2p", "-p2p_pl"], default_value="-a2av"),
-        Categorical(name='P4', choices=["-pencils", "-slabs"], default_value="-pencils"),
+    ]
+    if n_dimensions == 3:
+        # HeFFTe documentation claims this option is ignored for 1D and 2D FFTs
+        parameters += [
+            Categorical(name='P4', choices=["-pencils", "-slabs"], default_value="-pencils"),
+        ]
+    parameters += [
+        # P5 changes the actual problem
         Categorical(name='P5', choices=["-r2c_dir 0", "-r2c_dir 1","-r2c_dir 2"], default_value="-r2c_dir 0"),
         Categorical(name='P6', choices=[f"-ingrid {top}" for top in arch.mpi_topologies], default_value=f"-ingrid {arch.default_mpi_topology}"),
         Categorical(name='P7', choices=[f"-outgrid {top}" for top in arch.mpi_topologies], default_value=f"-outgrid {arch.default_mpi_topology}"),
@@ -77,9 +90,9 @@ class heFFTeProblemIDMapper(Mapping):
         demanded to do so, and only specifically manifests required keys.
     """
     # Problems are designated by (NODE_SCALE, APP_X, APP_Y, APP_Z)
-    APP_SCALES = [64,128,256,512,1024,1400,2048]
-    APP_SCALE_NAMES = ['N','S','M','L','XL','H','XH']
-    NODE_SCALES = [1,2,4,8,16,32,64,128]
+    APP_SCALES =      [1,   64, 128,256,512,1024,1400,2048]
+    APP_SCALE_NAMES = ['1D','N','S','M','L','XL','H','XH']
+    NODE_SCALES =     [1,   2,  4,  8,  16, 32,  64, 128]
     @property
     def app_scale_range(self):
         # Useful for creating SDV constraints
@@ -297,6 +310,9 @@ class heFFTeExecutor(Executor):
         return sorted_metrics[-1]
 
     def cleanup(self, run_strs, outfile, attempt):
+        # Delete core files if they exist
+        for corefile in pathlib.Path('.').glob('core.*'):
+            corefile.unlink()
         expected_cleanup_script = pathlib.Path('gpu_cleanup.sh')
         hostfile = None
         n_nodes = None
@@ -347,7 +363,7 @@ class heFFTePlopper(Plopper):
 heFFTe_FindReplaceRegex = FindReplaceRegex([r"([CP][0-9]+[XYZ]?)",r"(GPU_AWARE)"],prefix=(("#",""),("#","")))
 
 heFFTe_plopper_factory = Factory(heFFTePlopper,
-                                 initial_args=[pathlib.Path(__file__).parents[0].joinpath('speed3d.sh')],
+                                 initial_args=[pathlib.Path(__file__).parents[0].joinpath('speed3d_1d.sh')],
                                  initial_kwargs={'output_extension': '.sh',
                                                  'touch_output_dir': False,
                                                  'findReplace': heFFTe_FindReplaceRegex,
